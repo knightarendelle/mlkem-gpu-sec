@@ -1,0 +1,2 @@
+This folder stores Nsight Compute reports (.ncu-rep files).
+These are gitignored due to size. Store on RunPod volume.

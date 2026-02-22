@@ -1,0 +1,54 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.out
+
+# CUDA
+*.cubin
+*.fatbin
+*.ptx
+*.sass
+
+# Large experiment data (store on RunPod volume, not git)
+experiments/traces/*.bin
+experiments/traces/*.csv
+experiments/nsight/*.ncu-rep
+*.ncu-rep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Results that are too large
+experiments/results/*.npy
+experiments/results/*.pkl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Logs
+*.log
+
+# Secrets — never commit these
+*.key
+*.pem
+secrets.txt

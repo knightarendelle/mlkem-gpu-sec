@@ -1,0 +1,3 @@
+This folder stores raw timing trace files (.bin, .csv).
+Files here are gitignored if > 100MB.
+Always store traces on RunPod volume (/workspace), not just in git.
