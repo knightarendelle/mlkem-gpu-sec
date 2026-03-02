@@ -7,12 +7,12 @@
 
 set -e
 
-IMAGE="gpu-mlkem-security:latest"
-CONTAINER="gpu-mlkem-security"
+IMAGE="mlkem-gpu-sec:latest"
+CONTAINER="mlkem-gpu-sec"
 
 echo ""
 echo "================================================="
-echo "  gpu-mlkem-security: Docker Environment"
+echo "  mlkem-gpu-sec: Docker Environment"
 echo "================================================="
 echo ""
 

@@ -52,3 +52,4 @@ Makefile
 *.key
 *.pem
 secrets.txt
+baseline/atpqc-cuda/.git
