@@ -35,3 +35,13 @@ Copy this template for every entry:
 ---
 
 <!-- Add new entries below this line -->
+
+### 2026-03-02 — Phase 1: Baseline Build & Correctness Verification
+- **GPU:** RTX 4050 Laptop | Driver: 591.86 | CUDA: 12.6
+- **Phase:** Phase 1
+- **Command:** `make test` in `/workspace/refs/atpqc-cuda`
+- **Key result:** All three parameter sets pass correctness tests (exit code 0)
+  - Kyber-512: PASS
+  - Kyber-768: PASS
+  - Kyber-1024: PASS
+- **Notes:** Using atpqc-cuda (MIT license). liboqs-cupqc-meta has no standalone build system.
