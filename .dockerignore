@@ -1,0 +1,38 @@
+# Don't copy these into the Docker image
+
+# Large experiment data
+experiments/traces/*.bin
+experiments/traces/*.csv
+experiments/nsight/*.ncu-rep
+
+# Git history
+.git
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Paper (not needed in container)
+paper/
+
+# Logs
+*.log

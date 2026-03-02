@@ -1,0 +1,51 @@
+# =============================================================
+# docker-compose.yml
+# One command to build and run the research environment:
+#   docker compose up
+# =============================================================
+
+services:
+  mlkem-gpu-sec:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mlkem-gpu-sec:latest
+    container_name: mlkem-gpu-sec
+
+    # GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
+
+    # Required for Nsight Compute perf counters
+    cap_add:
+      - SYS_ADMIN
+
+    # Mount project directory into container
+    # Changes you make locally appear instantly inside container
+    volumes:
+      - .:/workspace/mlkem-gpu-secy
+      - experiments_data:/workspace/experiments_data
+
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+
+    # Working directory inside container
+    working_dir: /workspace/mlkem-gpu-sec
+
+    # Environment
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - CUDA_HOME=/usr/local/cuda
+
+# Persistent volume for large experiment data
+# (trace files, nsight reports)
+volumes:
+  experiments_data:
+    driver: local

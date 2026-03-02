@@ -1,4 +1,4 @@
-# gpu-mlkem-security
+# mlkem-gpu-sec
 
 > **GPU ML-KEM Security Stack: Timing Variance, Leakage Assessment & Hardened NTT Design**
 >
@@ -33,7 +33,7 @@ We measure the timing leakage surface of GPU ML-KEM, attribute root causes to GP
 ## Repo Structure
 
 ```
-gpu-mlkem-security/
+mlkem-gpu-sec/
 ├── baseline/           # Phase 1: GPU ML-KEM baseline implementation
 ├── harness/            # Phase 2: Timing trace collection & TVLA analysis
 ├── rootcause/          # Phase 3: Nsight Compute root cause analysis
@@ -58,8 +58,8 @@ gpu-mlkem-security/
 
 ### 2. Connect and clone
 ```bash
-git clone https://github.com/YOUR_USERNAME/gpu-mlkem-security.git
-cd gpu-mlkem-security
+git clone https://github.com/YOUR_USERNAME/mlkem-gpu-sec.git
+cd mlkem-gpu-sec
 ```
 
 ### 3. Run environment verification

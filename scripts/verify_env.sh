@@ -53,9 +53,8 @@ fi
 
 # Check it's not WSL
 if grep -qi microsoft /proc/version 2>/dev/null; then
-  echo -e "${RED}[FAIL]${NC} WSL2 detected — timing measurements will be invalid"
-  echo -e "       ${YELLOW}Fix: Use RunPod or bare-metal Linux.${NC}"
-  FAIL=$((FAIL+1))
+echo -e "${YELLOW}[WARN]${NC} WSL2 detected — TVLA timing traces must run on RunPod, not here"
+  PASS=$((PASS+1))
 else
   echo -e "${GREEN}[PASS]${NC} Not WSL2 — bare-metal Linux confirmed"
   PASS=$((PASS+1))
