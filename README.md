@@ -123,8 +123,7 @@ bash scripts/verify_env.sh
 
 ### 5. Build and test the baseline
 ```bash
-cd baseline/atpqc-cuda
-make test
+bash baseline/setup.sh
 ```
 
 ### 6. Run throughput benchmark
