@@ -112,7 +112,7 @@ docker build -t mlkem-gpu-sec:latest .
 
 ### 3. Run the container
 ```bash
-docker run -it --gpus all --cap-add=SYS_ADMIN -v ${PWD}:/workspace/gpu-mlkem-security mlkem-gpu-sec:latest
+docker run -it --gpus all --cap-add=SYS_ADMIN -v ${PWD}:/workspace/mlkem-gpu-sec mlkem-gpu-sec:latest
 ```
 
 ### 4. Verify environment

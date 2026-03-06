@@ -111,6 +111,7 @@ echo -e "${BLUE}[ Step 4/4 ]${NC} Building all three parameter sets (this takes 
 echo ""
 
 make test 2>&1
+make bench 2>&1
 
 echo ""
 

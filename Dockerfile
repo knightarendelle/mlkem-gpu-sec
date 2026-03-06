@@ -82,7 +82,7 @@ RUN git clone --depth 1 \
     || echo "WARNING: atpqc-cuda clone failed"
 
 # ── Set working directory to project ─────────────────────
-WORKDIR /workspace/gpu-mlkem-security
+WORKDIR /workspace/mlkem-gpu-sec
 
 # ── Verify environment on build ──────────────────────────
 RUN nvcc --version && \

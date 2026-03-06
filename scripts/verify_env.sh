@@ -35,7 +35,7 @@ check() {
 
 echo ""
 echo -e "${BLUE}=================================================${NC}"
-echo -e "${BLUE}  gpu-mlkem-security: Environment Verification  ${NC}"
+echo -e "${BLUE}  mlkem-gpu-sec: Environment Verification  ${NC}"
 echo -e "${BLUE}=================================================${NC}"
 echo ""
 

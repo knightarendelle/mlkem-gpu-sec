@@ -55,8 +55,8 @@ docker run -it \
   --gpus all \
   --cap-add=SYS_ADMIN \
   --name "$CONTAINER" \
-  -v "$(pwd):/workspace/gpu-mlkem-security" \
-  -w "/workspace/gpu-mlkem-security" \
+  -v "$(pwd):/workspace/mlkem-gpu-sec" \
+  -w "/workspace/mlkem-gpu-sec" \
   -e NVIDIA_VISIBLE_DEVICES=all \
   -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
   "$IMAGE" \

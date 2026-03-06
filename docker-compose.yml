@@ -28,7 +28,7 @@ services:
     # Mount project directory into container
     # Changes you make locally appear instantly inside container
     volumes:
-      - .:/workspace/mlkem-gpu-secy
+      - .:/workspace/mlkem-gpu-sec
       - experiments_data:/workspace/experiments_data
 
     # Keep container running for interactive use
