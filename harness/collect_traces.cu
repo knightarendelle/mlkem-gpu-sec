@@ -336,14 +336,14 @@ int main(int argc, char *argv[]) {
     printf("[Saving traces]\n");
     char fname0[256], fname1[256];
     snprintf(fname0, sizeof(fname0),
-             "../../experiments/traces/kyber%d_class0_n%d.csv",
+             "experiments/traces/kyber%d_class0_n%d.csv",
              variant, n_traces);
     snprintf(fname1, sizeof(fname1),
-             "../../experiments/traces/kyber%d_class1_n%d.csv",
+             "experiments/traces/kyber%d_class1_n%d.csv",
              variant, n_traces);
 
     // Create output directory if needed
-    system("mkdir -p ../../experiments/traces");
+    system("mkdir -p experiments/traces");
 
     save_traces(fname0, timings_class0, n_traces, 0, variant);
     save_traces(fname1, timings_class1, n_traces, 1, variant);
