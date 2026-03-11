@@ -1,0 +1,417 @@
+//
+// trace_main.cu
+// Per-iteration decapsulation timing for TVLA analysis.
+//
+// Based on atpqc-cuda bench/main.cu by Tatsuki Ono (MIT License)
+// Extended for timing trace collection by mlkem-gpu-sec team.
+//
+// Usage (after build):
+//   echo "<ninputs> <genmat_nw> <genvec_nw> <genpoly_nw> <fips_nw> <ntraces> <class>" \
+//     | ./trace_bench_kyber512.out
+//
+//   class 0 = valid ciphertexts (from real encaps)
+//   class 1 = invalid ciphertexts (random bytes)
+//
+// Output: CSV lines to stdout
+//   timing_us
+//   18.432000
+//   18.560000
+//   ...
+//
+// Example:
+//   echo "1 4 4 4 4 100000 0" | ./trace_bench_kyber512.out \
+//     > experiments/traces/kyber512_class0_n100000.csv
+//   echo "1 4 4 4 4 100000 1" | ./trace_bench_kyber512.out \
+//     > experiments/traces/kyber512_class1_n100000.csv
+//
+
+#include <algorithm>
+#include <array>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <numeric>
+#include <vector>
+
+#include "../../../lib/cuda_debug.hpp"
+#include "../../../lib/cuda_resource.hpp"
+#include "../../../lib/fips202_ws/host.cuh"
+#include "../../../lib/kyber/arithmetic_mt/host.cuh"
+#include "../../../lib/kyber/endecode_mt/host.cuh"
+#include "../../../lib/kyber/genpoly_warp/host.cuh"
+#include "../../../lib/kyber/ntt_ctgs_128t/host.cuh"
+#include "../../../lib/kyber/ntt_ctgs_64t/host.cuh"
+#include "../../../lib/kyber/params.cuh"
+#include "../../../lib/kyber/primitive/ccakem_dec.cuh"
+#include "../../../lib/kyber/primitive/ccakem_enc.cuh"
+#include "../../../lib/kyber/primitive/ccakem_keypair.cuh"
+#include "../../../lib/kyber/primitive/cpapke_dec.cuh"
+#include "../../../lib/kyber/primitive/cpapke_enc.cuh"
+#include "../../../lib/kyber/primitive/cpapke_keypair.cuh"
+#include "../../../lib/kyber/symmetric_ws/host.cuh"
+#include "../../../lib/kyber/variants.cuh"
+#include "../../../lib/rng/std_random_device.hpp"
+#include "../../../lib/verify_cmov_ws/host.cuh"
+
+#ifndef KYBER_VARIANT
+#define KYBER_VARIANT kyber512
+#endif
+
+namespace atpqc_cuda::kyber::trace_bench {
+
+using rng_type = rng::std_random_device;
+using variant  = variants::KYBER_VARIANT;
+constexpr variant variant_v;
+
+// ── Build all the operation objects ──────────────────────
+// (identical pattern to bench/main.cu)
+struct KyberOps {
+    unsigned ninputs;
+    unsigned fips202_nwarps;
+
+    rng_type randombytes;
+    symmetric_ws::host::hash_g hash_seed;
+    genpoly_warp::host::gena<params::k<variant>> generate_a;
+    genpoly_warp::host::genat<params::k<variant>> generate_at;
+    genpoly_warp::host::gennoise<params::k<variant>, params::eta1<variant>> generate_s;
+    genpoly_warp::host::gennoise<params::k<variant>, params::eta1<variant>> generate_e;
+    genpoly_warp::host::gennoise<params::k<variant>, params::eta1<variant>> generate_r;
+    genpoly_warp::host::gennoise<params::k<variant>, params::eta2> generate_e1;
+    genpoly_warp::host::gennoise<1, params::eta2> generate_e2;
+    ntt_ctgs_64t::host::fwdntt<params::k<variant>> fwdnttvec_s;
+    ntt_ctgs_64t::host::fwdntt<params::k<variant>> fwdnttvec_e;
+    ntt_ctgs_64t::host::fwdntt<params::k<variant>> fwdnttvec_r;
+    ntt_ctgs_64t::host::fwdntt<params::k<variant>> fwdnttvec_u;
+    ntt_ctgs_64t::host::invntt_tomont<params::k<variant>> intt_ar;
+    ntt_ctgs_64t::host::invntt_tomont<1> intt_tr;
+    ntt_ctgs_64t::host::invntt_tomont<1> intt_su;
+    arithmetic_mt::host::mattimesvec_tomont_plusvec<params::k<variant>> mtvpv;
+    arithmetic_mt::host::mattimesvec<params::k<variant>> mtv;
+    arithmetic_mt::host::vectimesvec<params::k<variant>> ttimesr;
+    arithmetic_mt::host::vectimesvec<params::k<variant>> stimesu;
+    arithmetic_mt::host::vecadd2<params::k<variant>> vpv;
+    arithmetic_mt::host::polyadd3 padd3;
+    arithmetic_mt::host::polysub psub;
+    endecode_mt::host::polyvec_tobytes<params::k<variant>> encodet;
+    endecode_mt::host::polyvec_tobytes<params::k<variant>> encodes;
+    endecode_mt::host::polyvec_frombytes<params::k<variant>> decodet;
+    endecode_mt::host::polyvec_frombytes<params::k<variant>> decodes;
+    endecode_mt::host::poly_frommsg frommsg;
+    endecode_mt::host::poly_tomsg tomsg;
+    endecode_mt::host::polyvec_compress<params::k<variant>, params::du<variant>> compressu;
+    endecode_mt::host::poly_compress<params::dv<variant>> compressv;
+    endecode_mt::host::polyvec_decompress<params::k<variant>, params::du<variant>> decompressu;
+    endecode_mt::host::poly_decompress<params::dv<variant>> decompressv;
+    symmetric_ws::host::hash_h keypair_hash_pk;
+    symmetric_ws::host::hash_h enc_hash_rand;
+    symmetric_ws::host::hash_h enc_hash_pk;
+    symmetric_ws::host::hash_h enc_hash_ct;
+    symmetric_ws::host::hash_g enc_hash_coin;
+    symmetric_ws::host::kdf enc_kdf;
+    symmetric_ws::host::hash_h dec_hash_ct;
+    symmetric_ws::host::hash_g dec_hash_coin;
+    symmetric_ws::host::kdf dec_kdf;
+    verify_cmov_ws::host::verify_cmov dec_verify_cmov;
+
+    primitive::ccakem_keypair::keypair keypair;
+    primitive::ccakem_enc::enc enc;
+    primitive::ccakem_dec::dec dec;
+
+    KyberOps(unsigned ni, unsigned genmat_nw, unsigned genvec_nw,
+             unsigned genpoly_nw, unsigned fips_nw)
+        : ninputs(ni),
+          fips202_nwarps(fips_nw),
+          hash_seed(ni, fips_nw),
+          generate_a(ni, genmat_nw),
+          generate_at(ni, genmat_nw),
+          generate_s(ni, genvec_nw),
+          generate_e(ni, genvec_nw),
+          generate_r(ni, genvec_nw),
+          generate_e1(ni, genvec_nw),
+          generate_e2(ni, genpoly_nw),
+          fwdnttvec_s(ni), fwdnttvec_e(ni), fwdnttvec_r(ni), fwdnttvec_u(ni),
+          intt_ar(ni), intt_tr(ni), intt_su(ni),
+          mtvpv(ni), mtv(ni), ttimesr(ni), stimesu(ni),
+          vpv(ni), padd3(ni), psub(ni),
+          encodet(ni), encodes(ni), decodet(ni), decodes(ni),
+          frommsg(ni), tomsg(ni),
+          compressu(ni), compressv(ni), decompressu(ni), decompressv(ni),
+          keypair_hash_pk(ni, fips_nw),
+          enc_hash_rand(ni, fips_nw), enc_hash_pk(ni, fips_nw),
+          enc_hash_ct(ni, fips_nw), enc_hash_coin(ni, fips_nw),
+          enc_kdf(ni, fips_nw),
+          dec_hash_ct(ni, fips_nw), dec_hash_coin(ni, fips_nw),
+          dec_kdf(ni, fips_nw),
+          dec_verify_cmov(ni),
+          keypair(ni, variant_v,
+              primitive::cpapke_keypair::cpapke_keypair(
+                  ni, variant_v, randombytes, hash_seed, generate_a,
+                  generate_s, generate_e, fwdnttvec_s, fwdnttvec_e,
+                  mtvpv, encodet, encodes),
+              randombytes, keypair_hash_pk),
+          enc(ni, variant_v,
+              primitive::cpapke_enc::cpapke_enc(
+                  ni, variant_v, generate_at, generate_r, generate_e1,
+                  generate_e2, fwdnttvec_r, intt_ar, intt_tr, mtv, ttimesr,
+                  vpv, padd3, decodet, frommsg, compressu, compressv),
+              randombytes, enc_hash_rand, enc_hash_pk, enc_hash_ct,
+              enc_hash_coin, enc_kdf),
+          dec(ni, variant_v,
+              primitive::cpapke_enc::cpapke_enc(
+                  ni, variant_v, generate_at, generate_r, generate_e1,
+                  generate_e2, fwdnttvec_r, intt_ar, intt_tr, mtv, ttimesr,
+                  vpv, padd3, decodet, frommsg, compressu, compressv),
+              primitive::cpapke_dec::cpapke_dec(
+                  ni, variant_v, fwdnttvec_u, intt_su, stimesu, psub,
+                  decodes, decompressu, decompressv, tomsg),
+              dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov)
+    {}
+};
+
+void trace_bench() {
+    unsigned ninputs, genmat_nw, genvec_nw, genpoly_nw, fips_nw;
+    unsigned ntraces;
+    int ct_class;  // 0 = valid, 1 = invalid
+
+    std::cin >> ninputs >> genmat_nw >> genvec_nw >> genpoly_nw >> fips_nw
+             >> ntraces >> ct_class;
+
+    // ── Allocate device memory ────────────────────────────
+    cuda_resource::device_pitched_memory<std::uint8_t> pk_d(
+        params::publickeybytes<variant>, ninputs);
+    cuda_resource::device_pitched_memory<std::uint8_t> sk_d(
+        params::secretkeybytes<variant>, ninputs);
+    cuda_resource::device_pitched_memory<std::uint8_t> ct_d(
+        params::ciphertextbytes<variant>, ninputs);
+    cuda_resource::device_pitched_memory<std::uint8_t> ss_d(
+        params::ssbytes, ninputs);
+
+    // ── Allocate pinned host memory ───────────────────────
+    cuda_resource::pinned_memory<std::uint8_t> pk_h(
+        params::publickeybytes<variant> * ninputs);
+    cuda_resource::pinned_memory<std::uint8_t> sk_h(
+        params::secretkeybytes<variant> * ninputs);
+    cuda_resource::pinned_memory<std::uint8_t> ct_h(
+        params::ciphertextbytes<variant> * ninputs);
+    cuda_resource::pinned_memory<std::uint8_t> ss_h(
+        params::ssbytes * ninputs);
+
+    // ── Build Kyber ops ───────────────────────────────────
+    KyberOps ops(ninputs, genmat_nw, genvec_nw, genpoly_nw, fips_nw);
+
+    // ── Memory resources ──────────────────────────────────
+    primitive::ccakem_keypair::mem_resource<variant> keypair_mr(ninputs);
+    primitive::ccakem_enc::mem_resource<variant> enc_mr(ninputs);
+    primitive::ccakem_dec::mem_resource<variant> dec_mr(ninputs);
+
+    // ── Step 1: Run keypair + encaps once to get valid ct ─
+    // We build a graph that does keypair → encaps → copy ct to host
+    {
+        cuda_resource::graph setup_graph;
+        cudaGraphNode_t dummy, pk_avail, sk_avail, ct_avail, ssb_avail, pk_used;
+
+        CCC(cudaGraphAddEmptyNode(&dummy, setup_graph, nullptr, 0));
+
+        auto kr = ops.keypair.join_graph(
+            setup_graph,
+            pk_d.get_ptr(), pk_d.get_pitch(), dummy, &pk_avail,
+            sk_d.get_ptr(), sk_d.get_pitch(), dummy, &sk_avail,
+            keypair_mr);
+
+        ops.randombytes(keypair_mr.pke_keypair_mr.rand_host.get_ptr(),
+                        params::symbytes * ninputs);
+        ops.randombytes(keypair_mr.rand_host.get_ptr(),
+                        params::symbytes * ninputs);
+        ops.randombytes(enc_mr.rand_host.get_ptr(),
+                        params::symbytes * ninputs);
+
+        auto er = ops.enc.join_graph(
+            setup_graph,
+            ct_d.get_ptr(), ct_d.get_pitch(), dummy, &ct_avail,
+            ss_d.get_ptr(), ss_d.get_pitch(), dummy, &ssb_avail,
+            pk_d.get_ptr(), pk_d.get_pitch(), pk_avail, &pk_used,
+            enc_mr);
+
+        // Copy ct and sk to host
+        cudaGraphNode_t cpyct, cpysk;
+        {
+            cudaMemcpy3DParms p = {};
+            p.srcPtr = make_cudaPitchedPtr(ct_d.get_ptr(), ct_d.get_pitch(),
+                params::ciphertextbytes<variant>, ninputs);
+            p.dstPtr = make_cudaPitchedPtr(ct_h.get_ptr(),
+                params::ciphertextbytes<variant>,
+                params::ciphertextbytes<variant>, ninputs);
+            p.extent = make_cudaExtent(params::ciphertextbytes<variant>, ninputs, 1);
+            p.kind = cudaMemcpyDeviceToHost;
+            std::array dep{ct_avail};
+            CCC(cudaGraphAddMemcpyNode(&cpyct, setup_graph,
+                dep.data(), dep.size(), &p));
+        }
+        {
+            cudaMemcpy3DParms p = {};
+            p.srcPtr = make_cudaPitchedPtr(sk_d.get_ptr(), sk_d.get_pitch(),
+                params::secretkeybytes<variant>, ninputs);
+            p.dstPtr = make_cudaPitchedPtr(sk_h.get_ptr(),
+                params::secretkeybytes<variant>,
+                params::secretkeybytes<variant>, ninputs);
+            p.extent = make_cudaExtent(params::secretkeybytes<variant>, ninputs, 1);
+            p.kind = cudaMemcpyDeviceToHost;
+            std::array dep{sk_avail};
+            CCC(cudaGraphAddMemcpyNode(&cpysk, setup_graph,
+                dep.data(), dep.size(), &p));
+        }
+
+        cuda_resource::graph_exec setup_exec(setup_graph);
+        cuda_resource::stream setup_stream(cudaStreamNonBlocking);
+        CCC(cudaGraphLaunch(setup_exec, setup_stream));
+        CCC(cudaStreamSynchronize(setup_stream));
+    }
+
+    // ── Step 2: If class 1, overwrite ct with random bytes ─
+    if (ct_class == 1) {
+        // Overwrite ct_h with random bytes (invalid ciphertext)
+        // Use a simple deterministic fill for reproducibility
+        std::uint8_t* ct_ptr = ct_h.get_ptr();
+        size_t ct_total = params::ciphertextbytes<variant> * ninputs;
+        for (size_t i = 0; i < ct_total; i++) {
+            ct_ptr[i] = (std::uint8_t)(i * 6364136223846793005ULL >> 56);
+        }
+    }
+
+    // ── Step 3: Build decaps-only graph ──────────────────
+    // Copy ct and sk from host → device, run decaps, record timing
+    cuda_resource::graph dec_graph;
+
+    cudaGraphNode_t cpyct_todev, cpysk_todev;
+    {
+        cudaMemcpy3DParms p = {};
+        p.srcPtr = make_cudaPitchedPtr(ct_h.get_ptr(),
+            params::ciphertextbytes<variant>,
+            params::ciphertextbytes<variant>, ninputs);
+        p.dstPtr = make_cudaPitchedPtr(ct_d.get_ptr(), ct_d.get_pitch(),
+            params::ciphertextbytes<variant>, ninputs);
+        p.extent = make_cudaExtent(params::ciphertextbytes<variant>, ninputs, 1);
+        p.kind = cudaMemcpyHostToDevice;
+        CCC(cudaGraphAddMemcpyNode(&cpyct_todev, dec_graph, nullptr, 0, &p));
+    }
+    {
+        cudaMemcpy3DParms p = {};
+        p.srcPtr = make_cudaPitchedPtr(sk_h.get_ptr(),
+            params::secretkeybytes<variant>,
+            params::secretkeybytes<variant>, ninputs);
+        p.dstPtr = make_cudaPitchedPtr(sk_d.get_ptr(), sk_d.get_pitch(),
+            params::secretkeybytes<variant>, ninputs);
+        p.extent = make_cudaExtent(params::secretkeybytes<variant>, ninputs, 1);
+        p.kind = cudaMemcpyHostToDevice;
+        CCC(cudaGraphAddMemcpyNode(&cpysk_todev, dec_graph, nullptr, 0, &p));
+    }
+
+    // Event: start of decaps
+    cudaGraphNode_t dec_start_record;
+    cuda_resource::event dec_start_event(cudaEventDefault);
+    {
+        std::array dep{cpyct_todev, cpysk_todev};
+        CCC(cudaGraphAddEventRecordNode(&dec_start_record, dec_graph,
+            dep.data(), dep.size(), dec_start_event));
+    }
+
+    // Decaps kernel
+    cudaGraphNode_t ssa_avail, ct_used, sk_used;
+    auto dr = ops.dec.join_graph(
+        dec_graph,
+        ss_d.get_ptr(), ss_d.get_pitch(), dec_start_record, &ssa_avail,
+        ct_d.get_ptr(), ct_d.get_pitch(), dec_start_record, &ct_used,
+        sk_d.get_ptr(), sk_d.get_pitch(), dec_start_record, &sk_used,
+        dec_mr);
+
+    // Copy ss back (ensures decaps fully completes)
+    cudaGraphNode_t cpyss_tohost;
+    {
+        cudaMemcpy3DParms p = {};
+        p.srcPtr = make_cudaPitchedPtr(ss_d.get_ptr(), ss_d.get_pitch(),
+            params::ssbytes, ninputs);
+        p.dstPtr = make_cudaPitchedPtr(ss_h.get_ptr(), params::ssbytes,
+            params::ssbytes, ninputs);
+        p.extent = make_cudaExtent(params::ssbytes, ninputs, 1);
+        p.kind = cudaMemcpyDeviceToHost;
+        std::array dep{ssa_avail};
+        CCC(cudaGraphAddMemcpyNode(&cpyss_tohost, dec_graph,
+            dep.data(), dep.size(), &p));
+    }
+
+    // Event: end of decaps
+    cudaGraphNode_t dec_end_record;
+    cuda_resource::event dec_end_event(cudaEventDefault);
+    {
+        std::array dep{cpyss_tohost};
+        CCC(cudaGraphAddEventRecordNode(&dec_end_record, dec_graph,
+            dep.data(), dep.size(), dec_end_event));
+    }
+
+    cuda_resource::graph_exec dec_exec(dec_graph);
+    cuda_resource::stream dec_stream(cudaStreamNonBlocking);
+
+    // ── Step 4: Warm up ───────────────────────────────────
+    // Run 200 iterations to reach GPU steady state before collecting
+    for (unsigned w = 0; w < 200; w++) {
+        CCC(cudaGraphLaunch(dec_exec, dec_stream));
+        CCC(cudaStreamSynchronize(dec_stream));
+    }
+
+    // ── Step 5: Collect traces ────────────────────────────
+    // Print CSV header to stderr so it doesn't mix with timing data on stdout
+    fprintf(stderr, "# mlkem-gpu-sec Phase 2 timing traces\n");
+    fprintf(stderr, "# variant: Kyber-%d\n",
+            (int)params::ciphertextbytes<variant> == 768 ? 512 :
+            (int)params::ciphertextbytes<variant> == 1088 ? 768 : 1024);
+    fprintf(stderr, "# class: %d (%s)\n", ct_class,
+            ct_class == 0 ? "valid" : "invalid");
+    fprintf(stderr, "# n_traces: %u\n", ntraces);
+    fprintf(stderr, "# unit: microseconds\n");
+    fprintf(stderr, "# ninputs: %u\n", ninputs);
+
+    // Print header to stdout (the actual CSV)
+    std::printf("# mlkem-gpu-sec Phase 2 timing traces\n");
+    std::printf("# variant: Kyber-%d\n",
+            (int)params::ciphertextbytes<variant> == 768 ? 512 :
+            (int)params::ciphertextbytes<variant> == 1088 ? 768 : 1024);
+    std::printf("# class: %d (%s)\n", ct_class,
+            ct_class == 0 ? "valid" : "invalid");
+    std::printf("# n_traces: %u\n", ntraces);
+    std::printf("# unit: microseconds\n");
+    std::printf("timing_us\n");
+
+    for (unsigned i = 0; i < ntraces; i++) {
+        CCC(cudaGraphLaunch(dec_exec, dec_stream));
+        CCC(cudaStreamSynchronize(dec_stream));
+
+        float ms = 0.0f;
+        CCC(cudaEventElapsedTime(&ms, dec_start_event, dec_end_event));
+        std::printf("%.6f\n", ms * 1000.0f);  // ms → microseconds
+
+        // Progress to stderr every 10%
+        if ((i + 1) % (ntraces / 10) == 0) {
+            fprintf(stderr, "  %u%%\n", (i + 1) * 100 / ntraces);
+            fflush(stderr);
+        }
+    }
+}
+
+}  // namespace atpqc_cuda::kyber::trace_bench
+
+int main() {
+    CUDA_DEBUG_RESET();
+
+    CCC(cuInit(0));
+    CUdevice dev;
+    CCC(cuDeviceGet(&dev, 0));
+
+    {
+        atpqc_cuda::cuda_resource::context ctx(dev);
+        atpqc_cuda::kyber::trace_bench::trace_bench();
+        CCC(cuCtxSynchronize());
+    }
+
+    return 0;
+}
