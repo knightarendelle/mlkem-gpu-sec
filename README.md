@@ -53,13 +53,13 @@ Measured on RTX 4050 Laptop GPU | Driver 591.86 | CUDA 12.6 | 1024 parallel inpu
 
 Measured on RTX 4090 (RunPod Secure Cloud) | Driver 550.127.05 | CUDA 12.4 | 100,000 traces per class
 
-| Variant | |t-statistic| | Mean diff | Direction | Sliding window max |t| | Windows above threshold |
-|---------|-------------|-----------|-----------|----------------------|------------------------|
+| Variant | \|t-statistic\| | Mean diff | Direction | Sliding window max \|t\| | Windows above threshold |
+|---------|----------------|-----------|-----------|--------------------------|-------------------------|
 | Kyber-512 | 63.42 | +0.95 µs | valid faster | 96.09 | 68.5% |
 | Kyber-768 | 20.83 | −0.25 µs | invalid faster | 92.08 | — |
 | Kyber-1024 | 155.53 | −1.19 µs | invalid faster | 106.12 | 89.3% |
 
-**All three variants exceed the |t| ≥ 4.5 TVLA threshold (p ≈ 0). Timing leakage confirmed across all Kyber parameter sets.**
+**All three variants exceed the \|t\| ≥ 4.5 TVLA threshold (p ≈ 0). Timing leakage confirmed across all Kyber parameter sets.**
 
 Key observations:
 - Leakage direction flips between Kyber-512 (valid faster) and Kyber-768/1024 (invalid faster)

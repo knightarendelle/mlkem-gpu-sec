@@ -84,13 +84,13 @@ Copy this template for every entry:
 - **Methodology:** CUDA Events timing, ninputs=1, 100,000 traces per class, outlier removal at z > 5.0
 - **Results:**
 
-| Variant | |t-statistic| | Mean diff | Direction | Sliding window max |t| | Windows above threshold |
-|---------|-------------|-----------|-----------|----------------------|------------------------|
+| Variant | \|t-statistic\| | Mean diff | Direction | Sliding window max \|t\| | Windows above threshold |
+|---------|----------------|-----------|-----------|--------------------------|-------------------------|
 | Kyber-512 | 63.42 | +0.95 µs | valid faster | 96.09 | 68.5% |
 | Kyber-768 | 20.83 | −0.25 µs | invalid faster | 92.08 | — |
 | Kyber-1024 | 155.53 | −1.19 µs | invalid faster | 106.12 | 89.3% |
 
-All three variants exceed the |t| ≥ 4.5 TVLA threshold with p ≈ 0. **Leakage confirmed across all Kyber parameter sets.**
+All three variants exceed the \|t\| ≥ 4.5 TVLA threshold with p ≈ 0. **Leakage confirmed across all Kyber parameter sets.**
 
 - **Notable observations:**
   - Leakage direction flips between Kyber-512 (valid faster) and Kyber-768/1024 (invalid faster)
