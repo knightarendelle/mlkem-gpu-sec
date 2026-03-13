@@ -73,19 +73,6 @@ Key observations:
 
 ---
 
-## Team
-
-| Person | Role | GitHub |
-|--------|------|--------|
-| Person 1 | GPU Systems Engineer | @username |
-| Person 2 | Security Analyst | @username |
-| Person 3 | Crypto Systems Engineer | @username |
-| Person 4 | Lead Writer & PM | @username |
-
-> Replace @username with actual GitHub handles.
-
----
-
 ## Repo Structure
 
 ```
