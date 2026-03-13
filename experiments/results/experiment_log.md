@@ -75,3 +75,26 @@ Copy this template for every entry:
   - Kyber-768:  KeyGen 3,200K ops/s | Encaps 2,947K ops/s | Decaps 2,970K ops/s
   - Kyber-1024: KeyGen 2,276K ops/s | Encaps 2,221K ops/s | Decaps 2,120K ops/s
 - **Notes:** CANONICAL paper numbers. Phase 1 complete.
+
+### 2026-03-13 — Phase 2: TVLA Timing Analysis (RTX 4090, RunPod Secure Cloud)
+- **GPU:** RTX 4090 (24GB) | Driver: 550.127.05 | CUDA: 12.4
+- **Platform:** RunPod Secure Cloud (bare-metal Linux)
+- **Phase:** Phase 2
+- **Command:** `echo "1 4 4 4 4 100000 <class>" | ./target/trace_kyberXXX.out > experiments/traces/kyberXXX_classN_n100000.csv`
+- **Methodology:** CUDA Events timing, ninputs=1, 100,000 traces per class, outlier removal at z > 5.0
+- **Results:**
+
+| Variant | |t-statistic| | Mean diff | Direction | Sliding window max |t| | Windows above threshold |
+|---------|-------------|-----------|-----------|----------------------|------------------------|
+| Kyber-512 | 63.42 | +0.95 µs | valid faster | 96.09 | 68.5% |
+| Kyber-768 | 20.83 | −0.25 µs | invalid faster | 92.08 | — |
+| Kyber-1024 | 155.53 | −1.19 µs | invalid faster | 106.12 | 89.3% |
+
+All three variants exceed the |t| ≥ 4.5 TVLA threshold with p ≈ 0. **Leakage confirmed across all Kyber parameter sets.**
+
+- **Notable observations:**
+  - Leakage direction flips between Kyber-512 (valid faster) and Kyber-768/1024 (invalid faster)
+  - Kyber-1024 shows the strongest leakage signal despite being the largest variant
+  - Sliding window analysis reveals leakage is not confined to specific trace regions — it is pervasive
+- **Trace files:** `experiments/traces/kyber{512,768,1024}_class{0,1}_n100000.csv` (~1.4 MB each, gitignored)
+- **Notes:** CANONICAL Phase 2 results. Phase 2 complete.
