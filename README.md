@@ -31,21 +31,26 @@ We measure the timing leakage surface of GPU ML-KEM, attribute root causes to GP
 
 ## Baseline Results (Phase 1)
 
-Measured on RTX 4050 Laptop GPU | Driver 591.86 | CUDA 12.6 | 1024 parallel inputs
+1024 parallel inputs | All throughput in thousands of ops/sec (K ops/s)
 
-| Variant | Operation | Latency | Throughput |
-|---------|-----------|---------|------------|
-| Kyber-512 | KeyGen | 1.499 ms | 683,177 ops/sec |
-| Kyber-512 | Encaps | 1.567 ms | 653,271 ops/sec |
-| Kyber-512 | Decaps | 1.412 ms | 725,171 ops/sec |
-| Kyber-768 | KeyGen | 2.179 ms | 469,958 ops/sec |
-| Kyber-768 | Encaps | 2.487 ms | 411,814 ops/sec |
-| Kyber-768 | Decaps | 2.116 ms | 483,930 ops/sec |
-| Kyber-1024 | KeyGen | 3.181 ms | 321,879 ops/sec |
-| Kyber-1024 | Encaps | 3.466 ms | 295,455 ops/sec |
-| Kyber-1024 | Decaps | 3.171 ms | 322,929 ops/sec |
+| Variant | Operation | RTX 4050 Laptop | RTX 3080 Ti | RTX 4090 (paper) |
+|---------|-----------|-----------------|-------------|------------------|
+| Kyber-512 | KeyGen | 683K | 1,784K | 4,306K |
+| Kyber-512 | Encaps | 653K | 1,740K | 4,541K |
+| Kyber-512 | Decaps | 725K | 1,653K | 4,298K |
+| Kyber-768 | KeyGen | 470K | 1,332K | 3,200K |
+| Kyber-768 | Encaps | 412K | 1,264K | 2,947K |
+| Kyber-768 | Decaps | 484K | 1,376K | 2,970K |
+| Kyber-1024 | KeyGen | 322K | 1,028K | 2,276K |
+| Kyber-1024 | Encaps | 295K | 935K | 2,221K |
+| Kyber-1024 | Decaps | 323K | 1,081K | 2,120K |
 
-> Final paper benchmarks will be re-run on RunPod RTX 4090 for comparability with prior work.
+**Environments:** RTX 4050 Laptop (Driver 591.86, CUDA 12.6) · RTX 3080 Ti local Docker/WSL2 (Driver 591.44, CUDA 12.6) · RTX 4090 RunPod Secure Cloud (Driver 550.127.05, CUDA 12.4)
+
+Key observations:
+- RTX 4090 achieves ~4.3M Kyber-512 KeyGen ops/s — 6.3× the RTX 4050 laptop
+- Throughput scales roughly with SM count: 4050 (20 SMs) → 3080 Ti (80 SMs) → 4090 (128 SMs)
+- RTX 4090 numbers are CANONICAL for the paper
 
 ---
 
