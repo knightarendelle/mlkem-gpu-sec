@@ -26,10 +26,11 @@ KYBER_SOURCE = $(wildcard $(KYBER_DIR)/*.cu) $(wildcard $(KYBER_DIR)/*/*.cu)
 
 SOURCE = $(FIPS202_WS_SOURCE) $(VERIFY_CMOV_WS_SOURCE) $(KYBER_SOURCE)
 
-.PHONY: all clean test bench
+.PHONY: all clean test bench trace
 
 test: test_kyber512 test_kyber768 test_kyber1024
 bench: bench_kyber512 bench_kyber768 bench_kyber1024
+trace: trace_kyber512 trace_kyber768 trace_kyber1024
 
 test_kyber512: $(BLDDIR)/test_kyber512.out
 test_kyber768: $(BLDDIR)/test_kyber768.out
@@ -38,6 +39,10 @@ test_kyber1024: $(BLDDIR)/test_kyber1024.out
 bench_kyber512: $(BLDDIR)/bench_kyber512.out
 bench_kyber768: $(BLDDIR)/bench_kyber768.out
 bench_kyber1024: $(BLDDIR)/bench_kyber1024.out
+
+trace_kyber512: $(BLDDIR)/trace_kyber512.out
+trace_kyber768: $(BLDDIR)/trace_kyber768.out
+trace_kyber1024: $(BLDDIR)/trace_kyber1024.out
 
 $(BLDDIR)/test_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/test/main.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 -DRNG_KIND=zero -DCUDA_DEBUG $^ -o $@
@@ -51,6 +56,13 @@ $(BLDDIR)/bench_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/main.cu
 $(BLDDIR)/bench_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/main.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber768 $^ -o $@
 $(BLDDIR)/bench_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/main.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
+
+$(BLDDIR)/trace_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 $^ -o $@
+$(BLDDIR)/trace_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber768 $^ -o $@
+$(BLDDIR)/trace_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
 
 clean:
