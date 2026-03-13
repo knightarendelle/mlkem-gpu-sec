@@ -251,46 +251,23 @@ void trace_bench() {
     CCC(cudaGraphAddMemcpyNode(&cpysk_todev, dec_graph, nullptr, 0, &p));
   }
 
-  // Event: start timing
-  cudaGraphNode_t dec_start_node;
-  cuda_resource::event dec_start_event(cudaEventDefault);
+  // Decaps kernel — events are recorded on the stream, not in the graph
+  cudaGraphNode_t data_ready;
   {
     std::array dep{cpyct_todev, cpysk_todev};
-    CCC(cudaGraphAddEventRecordNode(&dec_start_node, dec_graph,
-        dep.data(), dep.size(), dec_start_event));
+    CCC(cudaGraphAddEmptyNode(&data_ready, dec_graph, dep.data(), dep.size()));
   }
 
-  // Decaps kernel
   cudaGraphNode_t ssa_avail, ct_used, sk_used;
   auto dr = dec.join_graph(
       dec_graph,
-      ss_d.get_ptr(), ss_d.get_pitch(), dec_start_node, &ssa_avail,
-      ct_d.get_ptr(), ct_d.get_pitch(), dec_start_node, &ct_used,
-      sk_d.get_ptr(), sk_d.get_pitch(), dec_start_node, &sk_used,
+      ss_d.get_ptr(), ss_d.get_pitch(), data_ready, &ssa_avail,
+      ct_d.get_ptr(), ct_d.get_pitch(), data_ready, &ct_used,
+      sk_d.get_ptr(), sk_d.get_pitch(), data_ready, &sk_used,
       dec_mr);
 
-  // Copy ss back to ensure full completion
-  cudaGraphNode_t cpyss_tohost;
-  {
-    cudaMemcpy3DParms p = {};
-    p.srcPtr = make_cudaPitchedPtr(ss_d.get_ptr(), ss_d.get_pitch(),
-        params::ssbytes, ninputs);
-    p.dstPtr = make_cudaPitchedPtr(ss_h.get_ptr(), params::ssbytes,
-        params::ssbytes, ninputs);
-    p.extent = make_cudaExtent(params::ssbytes, ninputs, 1);
-    p.kind = cudaMemcpyDeviceToHost;
-    std::array dep{ssa_avail};
-    CCC(cudaGraphAddMemcpyNode(&cpyss_tohost, dec_graph, dep.data(), dep.size(), &p));
-  }
-
-  // Event: stop timing
-  cudaGraphNode_t dec_end_node;
+  cuda_resource::event dec_start_event(cudaEventDefault);
   cuda_resource::event dec_end_event(cudaEventDefault);
-  {
-    std::array dep{cpyss_tohost};
-    CCC(cudaGraphAddEventRecordNode(&dec_end_node, dec_graph,
-        dep.data(), dep.size(), dec_end_event));
-  }
 
   cuda_resource::graph_exec dec_exec(dec_graph);
   cuda_resource::stream dec_stream(cudaStreamNonBlocking);
@@ -315,14 +292,16 @@ void trace_bench() {
   std::printf("timing_us\n");
 
   for (unsigned i = 0; i < ntraces; i++) {
+    CCC(cudaEventRecord(dec_start_event, dec_stream));
     CCC(cudaGraphLaunch(dec_exec, dec_stream));
+    CCC(cudaEventRecord(dec_end_event, dec_stream));
     CCC(cudaStreamSynchronize(dec_stream));
 
     float ms = 0.0f;
     CCC(cudaEventElapsedTime(&ms, dec_start_event, dec_end_event));
     std::printf("%.6f\n", ms * 1000.0f);
 
-    if ((i + 1) % (ntraces / 10) == 0) {
+    if (ntraces >= 10 && (i + 1) % (ntraces / 10) == 0) {
       fprintf(stderr, "  %u%%\n", (i + 1) * 100 / ntraces);
       fflush(stderr);
     }
