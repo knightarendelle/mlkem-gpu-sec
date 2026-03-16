@@ -168,7 +168,7 @@ class dec {
       kernel_params.sharedMemBytes = hash_ct.get_shared_bytes();
       kernel_params.kernelParams = args_pack.hash_ct_args->get_args_ptr();
       kernel_params.extra = nullptr;
-      std::array dep_array{ct_ready, pke_enc_coin_node};
+      std::array dep_array{ct_ready, pke_enc_c_node};
       CCC(cudaGraphAddKernelNode(&hashct_node, graph, dep_array.data(),
                                  dep_array.size(), &kernel_params));
     }
