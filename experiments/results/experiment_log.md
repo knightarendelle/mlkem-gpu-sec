@@ -120,3 +120,19 @@ Top diverging kernels (DRAM bytes, valid vs invalid ciphertext):
 Notes:
 verify_cmov kernel absent — leakage upstream in re-encryption
 Multiple kernels leak, unlike CPU KyberSlash (single division op)
+
+## Phase 3 — Nsight Kernel Profiling (Cross-Architecture Comparison, Kyber-512)
+
+### GTX 1650 (Turing, CC 7.5) vs RTX 4050 (Ada Lovelace, CC 8.9)
+
+Kernels diverging on BOTH architectures (architecture-independent leakage):
+
+| Kernel | GTX 1650 Diff% | RTX 4050 Diff% |
+|--------|---------------|---------------|
+| genpoly_warp::genmatrix<2,1> | -69.0% | -17.9% |
+| fips202_ws::sha3<512> | -52.7% | -6.8% |
+| fips202_ws::sha3<256> | +8.3% | -15.2% |
+| genpoly_warp::gennoise<1,2> | +13.8% | -25.6% |
+| fips202_ws::shake<256> | +26.4% | +72.0% |
+
+Key finding: Leakage is architecture-independent — same kernels diverge on both Turing and Ada Lovelace. The shake<256> kernel shows amplified divergence on newer architecture (+72% on 4050 vs +26% on 1650).
