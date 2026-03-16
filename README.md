@@ -1,19 +1,9 @@
 # mlkem-gpu-sec
 
-> **GPU ML-KEM Security Stack: Timing Variance, Leakage Assessment & Hardened NTT Design**
+> **GPU ML-KEM Security Research** — Timing side-channel analysis of Kyber/ML-KEM on CUDA GPUs.
 >
 > First systematic security evaluation of GPU-accelerated ML-KEM (FIPS 203).
 > Target venue: TCHES 2026.
-
----
-
-## What This Project Is
-
-ML-KEM is now the global post-quantum key encapsulation standard (NIST FIPS 203), deployed in ~50% of HTTPS traffic. GPU implementations achieve millions of operations per second — but nobody has checked if they are safe against timing attacks.
-
-We measure the timing leakage surface of GPU ML-KEM, attribute root causes to GPU microarchitecture, and build a hardened NTT variant that reduces leakage with minimal throughput overhead.
-
-**This is the first rigorous security evaluation of GPU-accelerated ML-KEM.**
 
 ---
 
@@ -21,15 +11,38 @@ We measure the timing leakage surface of GPU ML-KEM, attribute root causes to GP
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| ✅ Phase 1 | Baseline GPU Kyber implementation + throughput benchmark | Complete |
-| ✅ Phase 2 | Timing trace harness + TVLA leakage analysis | Complete |
-| ⬜ Phase 3 | Nsight Compute root cause analysis | Pending |
-| ⬜ Phase 4 | Hardened NTT design + evaluation | Pending |
-| ⬜ Phase 5 | Co-tenancy experiments (MPS / MIG) | Pending |
+| Phase 1 | Baseline GPU Kyber implementation + throughput benchmark | Complete |
+| Phase 2 | Timing trace harness + TVLA leakage analysis | Complete |
+| Phase 3/4 | Root cause analysis and mitigation | In progress |
+| Phase 5 | Co-tenancy experiments (MPS / MIG) | Pending |
 
 ---
 
-## Baseline Results (Phase 1)
+## Key Results
+
+### Phase 2 — TVLA Leakage Detection (RTX 4090, 100K traces)
+
+| Variant | \|t-statistic\| | Verdict |
+|---------|-----------------|---------|
+| Kyber-512 | 63.42 | Leakage detected |
+| Kyber-768 | 20.83 | Leakage detected |
+| Kyber-1024 | 155.53 | Leakage detected |
+
+All three variants exceed the \|t\| >= 4.5 TVLA threshold (p ~ 0). Timing leakage confirmed across all Kyber parameter sets.
+
+### Phase 4 — After Serialization Fix (CUDA Graph Dependency Hardening)
+
+| Variant | Before \|t\| | After \|t\| | Status |
+|---------|-------------|------------|--------|
+| Kyber-512 | 63.42 | 2.10 | Fixed |
+| Kyber-768 | 20.83 | 34.54 | Residual leakage |
+| Kyber-1024 | 155.53 | 8.13 | Reduced |
+
+Serializing the CUDA graph (forcing `cpapke_enc` to complete before `hash_h_ct` begins) eliminates Kyber-512 leakage entirely and substantially reduces Kyber-1024. Kyber-768 retains residual leakage under investigation.
+
+---
+
+## Baseline Throughput (Phase 1)
 
 1024 parallel inputs | All throughput in thousands of ops/sec (K ops/s)
 
@@ -47,29 +60,31 @@ We measure the timing leakage surface of GPU ML-KEM, attribute root causes to GP
 
 **Environments:** RTX 4050 Laptop (Driver 591.86, CUDA 12.6) · RTX 3080 Ti local Docker/WSL2 (Driver 591.44, CUDA 12.6) · RTX 4090 RunPod Secure Cloud (Driver 550.127.05, CUDA 12.4)
 
-Key observations:
-- RTX 4090 achieves ~4.3M Kyber-512 KeyGen ops/s — 6.3× the RTX 4050 laptop
-- Throughput scales roughly with SM count: 4050 (20 SMs) → 3080 Ti (80 SMs) → 4090 (128 SMs)
-- RTX 4090 numbers are CANONICAL for the paper
-
 ---
 
-## TVLA Leakage Results (Phase 2)
+## Quick Start (Docker)
 
-Measured on RTX 4090 (RunPod Secure Cloud) | Driver 550.127.05 | CUDA 12.4 | 100,000 traces per class
+```bash
+git clone https://github.com/knightarendelle/mlkem-gpu-sec.git
+cd mlkem-gpu-sec
+docker build -t mlkem-gpu-sec .
+docker run --gpus all -it --rm -v $(pwd):/workspace/mlkem-gpu-sec mlkem-gpu-sec
+bash scripts/runpod_install.sh
+bash baseline/setup.sh
+```
 
-| Variant | \|t-statistic\| | Mean diff | Direction | Sliding window max \|t\| | Windows above threshold |
-|---------|----------------|-----------|-----------|--------------------------|-------------------------|
-| Kyber-512 | 63.42 | +0.95 µs | valid faster | 96.09 | 68.5% |
-| Kyber-768 | 20.83 | −0.25 µs | invalid faster | 92.08 | — |
-| Kyber-1024 | 155.53 | −1.19 µs | invalid faster | 106.12 | 89.3% |
+### Prerequisites
+- Docker Desktop installed and running
+- NVIDIA GPU (RTX 30xx or 40xx recommended)
+- WSL2 enabled on Windows
+- NVIDIA Control Panel -> Developer -> Allow access to GPU performance counters
 
-**All three variants exceed the \|t\| ≥ 4.5 TVLA threshold (p ≈ 0). Timing leakage confirmed across all Kyber parameter sets.**
-
-Key observations:
-- Leakage direction flips between Kyber-512 (valid faster) and Kyber-768/1024 (invalid faster)
-- Kyber-1024 shows the strongest leakage signal despite being the largest variant
-- Timing methodology: CUDA Events, ninputs=1, outlier removal at z > 5.0
+### Run throughput benchmark
+```bash
+echo "1024 4 4 4 4" | ./target/bench_kyber512.out
+echo "1024 4 4 4 4" | ./target/bench_kyber768.out
+echo "1024 4 4 4 4" | ./target/bench_kyber1024.out
+```
 
 ---
 
@@ -101,51 +116,6 @@ mlkem-gpu-sec/
 
 ---
 
-## Quick Start (Docker — Local Development)
-
-### Prerequisites
-- Docker Desktop installed and running
-- NVIDIA GPU (RTX 30xx or 40xx recommended)
-- WSL2 enabled on Windows
-- NVIDIA Control Panel → Developer → Allow access to GPU performance counters
-
-### 1. Clone the repo
-```bash
-git clone https://github.com/YOUR_USERNAME/mlkem-gpu-sec.git
-cd mlkem-gpu-sec
-```
-
-### 2. Build the Docker image
-```bash
-docker build -t mlkem-gpu-sec:latest .
-```
-> First build takes 5-10 minutes. Subsequent builds use cache and are much faster.
-
-### 3. Run the container
-```bash
-docker run -it --gpus all --cap-add=SYS_ADMIN -v ${PWD}:/workspace/mlkem-gpu-sec mlkem-gpu-sec:latest
-```
-
-### 4. Verify environment
-```bash
-bash scripts/verify_env.sh
-```
-> Expect 17/18 checks to pass. The WSL2 warning is expected — see note below.
-
-### 5. Build and test the baseline
-```bash
-bash baseline/setup.sh
-```
-
-### 6. Run throughput benchmark
-```bash
-echo "1024 4 4 4 4" | ./target/bench_kyber512.out
-echo "1024 4 4 4 4" | ./target/bench_kyber768.out
-echo "1024 4 4 4 4" | ./target/bench_kyber1024.out
-```
-
----
-
 ## Environment Requirements
 
 | Requirement | Version | Notes |
@@ -164,8 +134,8 @@ echo "1024 4 4 4 4" | ./target/bench_kyber1024.out
 
 | Environment | Development | TVLA Timing Traces | Paper Results |
 |-------------|-------------|-------------------|---------------|
-| Docker (WSL2) | ✅ Fine | ❌ WDDM adds noise | ❌ |
-| RunPod (bare-metal) | ✅ Fine | ✅ Valid | ✅ |
+| Docker (WSL2) | Fine | WDDM adds noise | No |
+| RunPod (bare-metal) | Fine | Valid | Yes |
 
 **Never collect TVLA timing traces inside Docker on Windows.** WDDM jitter invalidates measurements. All final timing experiments run on RunPod.
 
@@ -214,6 +184,12 @@ CUDA_GENCODE_FLAG := -arch=compute_89 -code=sm_89  # RTX 4050 = Ada Lovelace CC 
 
 ---
 
+## Team
+
+4 members | TCHES 2026 target submission April 15
+
+---
+
 ## Experiment Tracking
 
 All experiments must be logged in `experiments/results/experiment_log.md` with:
@@ -223,15 +199,7 @@ All experiments must be logged in `experiments/results/experiment_log.md` with:
 - Exact command run
 - Key result or finding
 
-This is non-negotiable. Reproducibility is part of the paper's contribution.
-
----
-
-## Paper
-
-- **Draft:** Overleaf (link shared privately with team)
-- **Format:** TCHES / IACR
-- **Target submission:** TCHES 2026
+Reproducibility is part of the paper's contribution.
 
 ---
 
@@ -242,7 +210,6 @@ This is non-negotiable. Reproducibility is part of the paper's contribution.
 3. **Document every experiment** in `experiment_log.md` before closing your session
 4. **Pin your CUDA and driver versions** — report them in every result
 5. **Always push before ending a session** — never leave uncommitted work locally
-6. **Do not start Phase 4 before Phase 3 is complete** — hardening without root cause is guesswork
 
 ---
 
