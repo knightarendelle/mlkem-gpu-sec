@@ -19,12 +19,14 @@ BLDDIR := ./target
 
 FIPS202_WS_DIR := $(SRCDIR)/lib/fips202_ws
 FIPS202_WS_SOURCE = $(wildcard $(FIPS202_WS_DIR)/*.cu)
+TIMING_FENCE_WS_DIR := $(SRCDIR)/lib/timing_fence_ws
+TIMING_FENCE_WS_SOURCE = $(wildcard $(TIMING_FENCE_WS_DIR)/*.cu)
 VERIFY_CMOV_WS_DIR := $(SRCDIR)/lib/verify_cmov_ws
 VERIFY_CMOV_WS_SOURCE = $(wildcard $(VERIFY_CMOV_WS_DIR)/*.cu)
 KYBER_DIR := $(SRCDIR)/lib/kyber
 KYBER_SOURCE = $(wildcard $(KYBER_DIR)/*.cu) $(wildcard $(KYBER_DIR)/*/*.cu)
 
-SOURCE = $(FIPS202_WS_SOURCE) $(VERIFY_CMOV_WS_SOURCE) $(KYBER_SOURCE)
+SOURCE = $(FIPS202_WS_SOURCE) $(TIMING_FENCE_WS_SOURCE) $(VERIFY_CMOV_WS_SOURCE) $(KYBER_SOURCE)
 
 .PHONY: all clean test bench trace
 

@@ -4,6 +4,7 @@ build/
 *.a
 *.so
 *.out
+.claude/
 
 # CUDA
 *.cubin

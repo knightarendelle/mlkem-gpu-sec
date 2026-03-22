@@ -29,6 +29,7 @@
 #include "../../../lib/cuda_debug.hpp"
 #include "../../../lib/cuda_resource.hpp"
 #include "../../../lib/fips202_ws/host.cuh"
+#include "../../../lib/timing_fence_ws/host.cuh"
 #include "../../../lib/kyber/arithmetic_mt/host.cuh"
 #include "../../../lib/kyber/endecode_mt/host.cuh"
 #include "../../../lib/kyber/genpoly_warp/host.cuh"
@@ -128,6 +129,19 @@ void trace_bench() {
   symmetric_ws::host::hash_g dec_hash_coin(ninputs, fips_nw);
   symmetric_ws::host::kdf dec_kdf(ninputs, fips_nw);
   verify_cmov_ws::host::verify_cmov dec_verify_cmov(ninputs);
+  // Timing fence: pad decaps to a fixed floor so valid/invalid paths
+  // become indistinguishable to a timing observer.
+  // Floor is set per-variant above the observed worst-case execution time:
+  //   Kyber-512:  800µs  (observed max ~628µs)
+  //   Kyber-768:  900µs  (observed max ~683µs)
+  //   Kyber-1024: 1000µs (observed max ~757µs)
+#if KYBER_VARIANT == kyber512
+  timing_fence_ws::host::timing_fence dec_tf(1200);
+#elif KYBER_VARIANT == kyber768
+  timing_fence_ws::host::timing_fence dec_tf(1200);
+#else  // kyber1024
+  timing_fence_ws::host::timing_fence dec_tf(1200);
+#endif
 
   primitive::ccakem_keypair::keypair keypair(
       ninputs, variant_v,
@@ -153,7 +167,7 @@ void trace_bench() {
       primitive::cpapke_dec::cpapke_dec(
           ninputs, variant_v, fwdnttvec_u, intt_su, stimesu, psub, decodes,
           decompressu, decompressv, tomsg),
-      dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov);
+      dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov, dec_tf);
 
   primitive::ccakem_keypair::mem_resource<variant> keypair_mr(ninputs);
   primitive::ccakem_enc::mem_resource<variant> enc_mr(ninputs);

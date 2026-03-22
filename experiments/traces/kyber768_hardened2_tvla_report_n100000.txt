@@ -1,0 +1,12 @@
+mlkem-gpu-sec TVLA Report
+====================================================
+Variant:       Kyber-768
+Traces:        99,900 + 99,898
+t-statistic:   113.943015
+|t-statistic|: 113.943015
+p-value:       0.00e+00
+Threshold:     4.5
+Mean diff:     -32.4761 us
+Verdict:       LEAKAGE DETECTED
+Sliding max:   42.7965
+Windows >thr:  80.1%
