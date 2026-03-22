@@ -286,6 +286,14 @@ void trace_bench() {
   cuda_resource::graph_exec dec_exec(dec_graph);
   cuda_resource::stream dec_stream(cudaStreamNonBlocking);
 
+  // ── DEBUG: verify fence parameters ─────────────────────
+  {
+    int clock_khz = 0;
+    cudaDeviceGetAttribute(&clock_khz, cudaDevAttrClockRate, 0);
+    fprintf(stderr, "DEBUG: clock_khz=%d, target_us=1200, fixed_cycles=%llu\n",
+            clock_khz, (unsigned long long)1200 * clock_khz / 1000);
+  }
+
   // ── Step 4: Warm up 200 iterations ─────────────────────
   for (unsigned w = 0; w < 200; w++) {
     CCC(cudaGraphLaunch(dec_exec, dec_stream));
