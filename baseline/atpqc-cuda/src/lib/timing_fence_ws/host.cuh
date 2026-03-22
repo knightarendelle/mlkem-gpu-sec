@@ -23,6 +23,7 @@
 #ifndef ATPQC_CUDA_LIB_TIMING_FENCE_WS_HOST_CUH_
 #define ATPQC_CUDA_LIB_TIMING_FENCE_WS_HOST_CUH_
 
+#include <cstdio>
 #include <memory>
 
 #include "../cuda_debug.hpp"
@@ -75,6 +76,8 @@ class timing_fence {
     CCC(cudaDeviceGetAttribute(&clock_khz, cudaDevAttrClockRate, 0));
     fixed_cycles_ = static_cast<unsigned long long>(target_us) *
                     static_cast<unsigned long long>(clock_khz) / 1000ULL;
+    std::printf("timing_fence: clock_khz=%u, target_us=%u, fixed_cycles=%llu\n",
+                clock_khz, target_us, fixed_cycles_);
   }
 };
 
