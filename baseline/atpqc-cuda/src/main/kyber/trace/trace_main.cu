@@ -316,6 +316,7 @@ void trace_bench() {
   for (unsigned i = 0; i < ntraces; i++) {
     CCC(cudaEventRecord(dec_start_event, dec_stream));
     CCC(cudaGraphLaunch(dec_exec, dec_stream));
+    CCC(cudaStreamSynchronize(dec_stream));
     CCC(cudaEventRecord(dec_end_event, dec_stream));
     CCC(cudaStreamSynchronize(dec_stream));
 
