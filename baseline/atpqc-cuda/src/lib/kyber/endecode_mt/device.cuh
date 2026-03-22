@@ -82,14 +82,7 @@ __device__ inline void poly_compress<4>::operator()(
   std::uint8_t t0 = compress_unit(psr(c0.x));
   std::uint8_t t1 = compress_unit(psr(c0.y));
 
-  // Hints 1+3: wt_store bypasses DCC — see polyvec_decompress<10> comment.
-  auto wt_store_byte = [](std::uint8_t* ptr, std::uint8_t val) noexcept {
-    asm volatile("st.global.wt.u8 [%0], %1;"
-                 : : "l"(reinterpret_cast<unsigned long long>(ptr)),
-                     "r"(static_cast<unsigned>(val))
-                 : "memory");
-  };
-  wt_store_byte(&cbytes[0], t0 | (t1 << 4));
+  cbytes[0] = t0 | (t1 << 4);
 }
 
 template <>
@@ -115,18 +108,11 @@ __device__ inline void poly_compress<5>::operator()(
   std::uint8_t t6 = compress_unit(psr(c3.x));
   std::uint8_t t7 = compress_unit(psr(c3.y));
 
-  // Hints 1+3: wt_store bypasses DCC — see polyvec_decompress<10> comment.
-  auto wt_store_byte = [](std::uint8_t* ptr, std::uint8_t val) noexcept {
-    asm volatile("st.global.wt.u8 [%0], %1;"
-                 : : "l"(reinterpret_cast<unsigned long long>(ptr)),
-                     "r"(static_cast<unsigned>(val))
-                 : "memory");
-  };
-  wt_store_byte(&cbytes[0], (t0 >> 0) | (t1 << 5));
-  wt_store_byte(&cbytes[1], (t1 >> 3) | (t2 << 2) | (t3 << 7));
-  wt_store_byte(&cbytes[2], (t3 >> 1) | (t4 << 4));
-  wt_store_byte(&cbytes[3], (t4 >> 4) | (t5 << 1) | (t6 << 6));
-  wt_store_byte(&cbytes[4], (t6 >> 2) | (t7 << 3));
+  cbytes[0] = (t0 >> 0) | (t1 << 5);
+  cbytes[1] = (t1 >> 3) | (t2 << 2) | (t3 << 7);
+  cbytes[2] = (t3 >> 1) | (t4 << 4);
+  cbytes[3] = (t4 >> 4) | (t5 << 1) | (t6 << 6);
+  cbytes[4] = (t6 >> 2) | (t7 << 3);
 }
 
 template <>
@@ -189,18 +175,11 @@ __device__ inline void polyvec_compress<10>::operator()(
   std::uint16_t t2 = compress_unit(psr(c1.x));
   std::uint16_t t3 = compress_unit(psr(c1.y));
 
-  // Hints 1+3: wt_store bypasses DCC — see polyvec_decompress<10> comment.
-  auto wt_store_byte = [](std::uint8_t* ptr, std::uint8_t val) noexcept {
-    asm volatile("st.global.wt.u8 [%0], %1;"
-                 : : "l"(reinterpret_cast<unsigned long long>(ptr)),
-                     "r"(static_cast<unsigned>(val))
-                 : "memory");
-  };
-  wt_store_byte(&cbytes[0], (t0 >> 0));
-  wt_store_byte(&cbytes[1], (t0 >> 8) | (t1 << 2));
-  wt_store_byte(&cbytes[2], (t1 >> 6) | (t2 << 4));
-  wt_store_byte(&cbytes[3], (t2 >> 4) | (t3 << 6));
-  wt_store_byte(&cbytes[4], (t3 >> 2));
+  cbytes[0] = (t0 >> 0);
+  cbytes[1] = (t0 >> 8) | (t1 << 2);
+  cbytes[2] = (t1 >> 6) | (t2 << 4);
+  cbytes[3] = (t2 >> 4) | (t3 << 6);
+  cbytes[4] = (t3 >> 2);
 }
 
 template <>
@@ -226,24 +205,17 @@ __device__ inline void polyvec_compress<11>::operator()(
   std::uint16_t t6 = compress_unit(psr(c3.x));
   std::uint16_t t7 = compress_unit(psr(c3.y));
 
-  // Hints 1+3: wt_store bypasses DCC — see polyvec_decompress<10> comment.
-  auto wt_store_byte = [](std::uint8_t* ptr, std::uint8_t val) noexcept {
-    asm volatile("st.global.wt.u8 [%0], %1;"
-                 : : "l"(reinterpret_cast<unsigned long long>(ptr)),
-                     "r"(static_cast<unsigned>(val))
-                 : "memory");
-  };
-  wt_store_byte(&cbytes[0],  (t0 >> 0));
-  wt_store_byte(&cbytes[1],  (t0 >> 8) | (t1 << 3));
-  wt_store_byte(&cbytes[2],  (t1 >> 5) | (t2 << 6));
-  wt_store_byte(&cbytes[3],  (t2 >> 2));
-  wt_store_byte(&cbytes[4],  (t2 >> 10) | (t3 << 1));
-  wt_store_byte(&cbytes[5],  (t3 >> 7) | (t4 << 4));
-  wt_store_byte(&cbytes[6],  (t4 >> 4) | (t5 << 7));
-  wt_store_byte(&cbytes[7],  (t5 >> 1));
-  wt_store_byte(&cbytes[8],  (t5 >> 9) | (t6 << 2));
-  wt_store_byte(&cbytes[9],  (t6 >> 6) | (t7 << 5));
-  wt_store_byte(&cbytes[10], (t7 >> 3));
+  cbytes[0]  = (t0 >> 0);
+  cbytes[1]  = (t0 >> 8) | (t1 << 3);
+  cbytes[2]  = (t1 >> 5) | (t2 << 6);
+  cbytes[3]  = (t2 >> 2);
+  cbytes[4]  = (t2 >> 10) | (t3 << 1);
+  cbytes[5]  = (t3 >> 7) | (t4 << 4);
+  cbytes[6]  = (t4 >> 4) | (t5 << 7);
+  cbytes[7]  = (t5 >> 1);
+  cbytes[8]  = (t5 >> 9) | (t6 << 2);
+  cbytes[9]  = (t6 >> 6) | (t7 << 5);
+  cbytes[10] = (t7 >> 3);
 }
 
 template <>
