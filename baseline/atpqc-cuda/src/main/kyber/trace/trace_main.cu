@@ -312,8 +312,8 @@ void trace_bench() {
   std::printf("timing_us\n");
 
   for (unsigned i = 0; i < ntraces; i++) {
-    CCC(cudaGraphLaunch(dec_exec, dec_stream));
     auto t_start = std::chrono::high_resolution_clock::now();
+    CCC(cudaGraphLaunch(dec_exec, dec_stream));
     CCC(cudaStreamSynchronize(dec_stream));
     auto t_end = std::chrono::high_resolution_clock::now();
 
