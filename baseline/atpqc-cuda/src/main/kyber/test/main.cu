@@ -28,7 +28,6 @@
 #include "../../../lib/rng/std_mt19937_64.hpp"
 #include "../../../lib/rng/std_random_device.hpp"
 #include "../../../lib/rng/zero.hpp"
-#include "../../../lib/timing_fence_ws/host.cuh"
 #include "../../../lib/verify_cmov_ws/host.cuh"
 
 #ifndef KYBER_VARIANT
@@ -119,7 +118,6 @@ int test_kyber() {
   symmetric_ws::host::hash_g dec_hash_coin(ninputs, fips_nwarps);
   symmetric_ws::host::kdf dec_kdf(ninputs, fips_nwarps);
   verify_cmov_ws::host::verify_cmov dec_verify_cmov(ninputs);
-  timing_fence_ws::host::timing_fence dec_tf(0);  // no-op fence for tests
 
   primitive::ccakem_keypair::keypair keypair(
       ninputs, variant_v,
@@ -144,7 +142,7 @@ int test_kyber() {
       primitive::cpapke_dec::cpapke_dec(ninputs, variant_v, fwdnttvec_u,
                                         intt_su, stimesu, psub, decodes,
                                         decompressu, decompressv, tomsg),
-      dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov, dec_tf);
+      dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov);
 
   {
     cuda_resource::device_pitched_memory<std::uint8_t> pk_d(

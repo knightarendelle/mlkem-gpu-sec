@@ -18,7 +18,6 @@
 
 #include "../../cuda_debug.hpp"
 #include "../../cuda_resource.hpp"
-#include "../../timing_fence_ws/host.cuh"
 #include "../params.cuh"
 #include "common.cuh"
 #include "cpapke_dec.cuh"
@@ -32,7 +31,6 @@ struct mem_resource {
   cuda_resource::device_pitched_memory<std::uint8_t> buf;
   cuda_resource::device_pitched_memory<std::uint8_t> kr;
   cuda_resource::device_pitched_memory<std::uint8_t> cmp;
-  cuda_resource::device_memory<unsigned long long> tf_timestamp;
 
   cpapke_enc::mem_resource<variant> pke_enc_mr;
   cpapke_dec::mem_resource<variant> pke_dec_mr;
@@ -42,14 +40,12 @@ struct mem_resource {
       : buf(2 * params::symbytes, ninputs),
         kr(2 * params::symbytes, ninputs),
         cmp(params::ciphertextbytes<variant>, ninputs),
-        tf_timestamp(1),
         pke_enc_mr(ninputs),
         pke_dec_mr(ninputs) {}
 };
 
 template <class Variant, class CpapkeEnc, class CpapkeDec, class HashH,
-          class HashG, class Kdf, class VerifyCmov,
-          class TimingFence = timing_fence_ws::host::timing_fence>
+          class HashG, class Kdf, class VerifyCmov>
 class dec {
  private:
   using variant = Variant;
@@ -61,7 +57,6 @@ class dec {
   HashG hash_coin;
   Kdf kdf;
   VerifyCmov verify_cmov;
-  TimingFence timing_fence_;
 
  public:
   struct graph_args {
@@ -79,11 +74,6 @@ class dec {
     std::unique_ptr<hash_coin_args_type> hash_coin_args;
     std::unique_ptr<kdf_args_type> kdf_args;
     std::unique_ptr<verify_cmov_args_type> verify_cmov_args;
-
-    using tf_record_args_type = typename TimingFence::record_args_type;
-    using tf_fence_args_type  = typename TimingFence::fence_args_type;
-    std::unique_ptr<tf_record_args_type> tf_record_args;
-    std::unique_ptr<tf_fence_args_type>  tf_fence_args;
   };
 
   graph_args join_graph(cudaGraph_t graph, std::uint8_t* ss,
@@ -104,22 +94,6 @@ class dec {
     const std::uint8_t* pk_in_sk = sk + params::indcpa_secretkeybytes<variant>;
     const std::uint8_t* z_in_sk =
         sk + params::secretkeybytes<variant> - params::symbytes;
-
-    // Timing-fence: record SM clock at graph start (no dependencies).
-    // The fence kernel at the end spins until start + fixed_cycles.
-    cudaGraphNode_t tf_record_node;
-    {
-      args_pack.tf_record_args =
-          timing_fence_.generate_record_args(mr.tf_timestamp.get_ptr());
-      cudaKernelNodeParams kp;
-      kp.func            = timing_fence_.get_record_func();
-      kp.gridDim         = timing_fence_.get_grid_dim();
-      kp.blockDim        = timing_fence_.get_block_dim();
-      kp.sharedMemBytes  = timing_fence_.get_shared_bytes();
-      kp.kernelParams    = args_pack.tf_record_args->get_args_ptr();
-      kp.extra           = nullptr;
-      CCC(cudaGraphAddKernelNode(&tf_record_node, graph, nullptr, 0, &kp));
-    }
 
     cudaGraphNode_t empty_root_node;
     { CCC(cudaGraphAddEmptyNode(&empty_root_node, graph, nullptr, 0)); }
@@ -232,26 +206,7 @@ class dec {
                                  dep_array.size(), &kernel_params));
     }
 
-    // Timing-fence: last node in the graph — spins until start + fixed_cycles.
-    // ss is only "available" after the fence, making total decaps time
-    // independent of which internal path completed faster.
-    cudaGraphNode_t tf_fence_node;
-    {
-      args_pack.tf_fence_args =
-          timing_fence_.generate_fence_args(mr.tf_timestamp.get_ptr());
-      cudaKernelNodeParams kp;
-      kp.func           = timing_fence_.get_fence_func();
-      kp.gridDim        = timing_fence_.get_grid_dim();
-      kp.blockDim       = timing_fence_.get_block_dim();
-      kp.sharedMemBytes = timing_fence_.get_shared_bytes();
-      kp.kernelParams   = args_pack.tf_fence_args->get_args_ptr();
-      kp.extra          = nullptr;
-      std::array dep_array{kdf_node, tf_record_node};
-      CCC(cudaGraphAddKernelNode(&tf_fence_node, graph, dep_array.data(),
-                                 dep_array.size(), &kp));
-    }
-
-    *ss_available_ptr = tf_fence_node;
+    *ss_available_ptr = kdf_node;
 
     {
       std::array dep_array{pke_dec_c_node, hashct_node, verify_cmov_node};
@@ -271,15 +226,14 @@ class dec {
 
   dec(unsigned ninputs, Variant variant_v, const CpapkeEnc& cpe,
       const CpapkeDec& cpd, const HashH& hash_h, const HashG& hash_g,
-      const Kdf& hash_kdf, const VerifyCmov& vc, const TimingFence& tf)
+      const Kdf& hash_kdf, const VerifyCmov& vc)
       : nin(ninputs),
         pke_enc(cpe),
         pke_dec(cpd),
         hash_ct(hash_h),
         hash_coin(hash_g),
         kdf(hash_kdf),
-        verify_cmov(vc),
-        timing_fence_(tf) {}
+        verify_cmov(vc) {}
 };
 
 }  // namespace atpqc_cuda::kyber::primitive::ccakem_dec

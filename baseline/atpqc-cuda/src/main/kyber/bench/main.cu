@@ -33,7 +33,6 @@
 #include "../../../lib/kyber/symmetric_ws/host.cuh"
 #include "../../../lib/kyber/variants.cuh"
 #include "../../../lib/rng/std_random_device.hpp"
-#include "../../../lib/timing_fence_ws/host.cuh"
 #include "../../../lib/verify_cmov_ws/host.cuh"
 
 #ifndef KYBER_VARIANT
@@ -404,7 +403,6 @@ void bench() {
   symmetric_ws::host::hash_g dec_hash_coin(ninputs, fips202_nwarps);
   symmetric_ws::host::kdf dec_kdf(ninputs, fips202_nwarps);
   verify_cmov_ws::host::verify_cmov dec_verify_cmov(ninputs);
-  timing_fence_ws::host::timing_fence dec_tf(0);  // no-op fence for bench
 
   primitive::ccakem_keypair::keypair keypair(
       ninputs, variant_v,
@@ -429,7 +427,7 @@ void bench() {
       primitive::cpapke_dec::cpapke_dec(ninputs, variant_v, fwdnttvec_u,
                                         intt_su, stimesu, psub, decodes,
                                         decompressu, decompressv, tomsg),
-      dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov, dec_tf);
+      dec_hash_ct, dec_hash_coin, dec_kdf, dec_verify_cmov);
 
   auto [keypair_latency, enc_latency, dec_latency] =
       measure(keypair, enc, dec, ninputs, pk_d, sk_d, ct_d, ss_d, pk_h, sk_h,
