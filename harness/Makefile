@@ -19,7 +19,7 @@ OUT_DIR    := .
 
 .PHONY: all clean
 
-all: collect_traces
+all: collect_traces cotenancy_attacker
 
 collect_traces: collect_traces.cu
 	@echo "Building collect_traces (sm_$(CC))..."
@@ -27,8 +27,13 @@ collect_traces: collect_traces.cu
 	$(NVCC) $(NVCC_FLAGS) -o collect_traces collect_traces.cu
 	@echo "Done: ./harness/collect_traces"
 
+cotenancy_attacker: cotenancy_attacker.cu
+	@echo "Building cotenancy_attacker (sm_$(CC))..."
+	$(NVCC) $(NVCC_FLAGS) -o cotenancy_attacker cotenancy_attacker.cu
+	@echo "Done: ./harness/cotenancy_attacker"
+
 clean:
-	rm -f collect_traces
+	rm -f collect_traces cotenancy_attacker
 
 help:
 	@echo "Usage:"
