@@ -2,28 +2,25 @@
 // Co-tenancy attacker: measures own memory bandwidth timing
 // while victim runs Kyber decapsulation on the same GPU.
 //
-// Two timing modes are supported:
+// Writes two separate CSV files, both with a single "timing_us" column
+// compatible with tvla_analysis.py:
 //
-//   GPU-event timing (CUDA events):
-//     Measures only the attacker kernel's GPU execution time.
-//     Correct when NVIDIA MPS is enabled and both processes truly co-tenant
-//     the GPU — victim memory pressure slows attacker's kernel execution.
-//     Blind to contention in the without-MPS case (serialized execution).
+//   <gpu_out.csv>  — GPU-event time (µs): attacker kernel execution time only.
+//                    Meaningful when NVIDIA MPS is enabled (true co-tenancy).
+//                    Blind to contention without MPS (serialized execution).
 //
-//   Wall-clock timing (clock_gettime, printed to stderr as a second column):
-//     Measures time from kernel submit to sync return on the host.
-//     Captures victim-induced contention delays even without MPS, because
-//     the host blocks on cudaDeviceSynchronize() while the victim holds
-//     the GPU context lock.
+//   <wall_out.csv> — Wall-clock time (µs): submit-to-sync on the host.
+//                    Captures victim-induced GPU lock contention even without
+//                    MPS, because the host blocks on cudaEventSynchronize()
+//                    while the victim holds the GPU context lock.
 //
-// NOTE: For true concurrent co-tenancy (GPU-event timing meaningful),
-//       enable NVIDIA MPS before running:
+// NOTE: For true concurrent co-tenancy (gpu_out meaningful), enable MPS:
 //         nvidia-cuda-mps-control -d
-//       Disable after:
+//       Disable with:
 //         echo quit | nvidia-cuda-mps-control
 //
 // Usage:
-//   ./cotenancy_attacker <ntraces> <output.csv>
+//   ./cotenancy_attacker <ntraces> <gpu_out.csv> <wall_out.csv>
 //
 // Compile (from repo root):
 //   nvcc -O3 -arch=compute_89 -o harness/cotenancy_attacker \
@@ -54,13 +51,16 @@ static inline double timespec_to_us(struct timespec t) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <ntraces> <output.csv>\n", argv[0]);
+    if (argc != 4) {
+        fprintf(stderr,
+                "Usage: %s <ntraces> <gpu_out.csv> <wall_out.csv>\n",
+                argv[0]);
         return 1;
     }
 
-    int ntraces       = atoi(argv[1]);
-    const char* outfile = argv[2];
+    int ntraces            = atoi(argv[1]);
+    const char* gpu_file   = argv[2];
+    const char* wall_file  = argv[3];
 
     // 256 MB buffer — well above L2 cache on all current GPUs, forces DRAM.
     int n = 256 * 1024 * 1024 / (int)sizeof(float);
@@ -79,17 +79,19 @@ int main(int argc, char** argv) {
     cudaEventCreate(&ev_start);
     cudaEventCreate(&ev_stop);
 
-    // Warmup: let the GPU reach steady-state frequency and fill caches.
+    // Warmup: let GPU reach steady-state frequency and fill caches.
     for (int i = 0; i < 20; i++) {
         bandwidth_probe<<<BLOCKS, THREADS>>>(d_buf, n, d_out);
         cudaDeviceSynchronize();
     }
 
-    FILE* f = fopen(outfile, "w");
-    if (!f) { perror("fopen"); return 1; }
-    // Two columns: GPU-event time (µs), wall-clock time (µs).
-    // GPU time is meaningful under MPS; wall-clock captures contention always.
-    fprintf(f, "gpu_us,wall_us\n");
+    // Both files use the "timing_us" header expected by tvla_analysis.py.
+    FILE* fg = fopen(gpu_file,  "w");
+    FILE* fw = fopen(wall_file, "w");
+    if (!fg) { perror("fopen gpu_out");  return 1; }
+    if (!fw) { perror("fopen wall_out"); return 1; }
+    fprintf(fg, "timing_us\n");
+    fprintf(fw, "timing_us\n");
 
     struct timespec t0, t1;
 
@@ -107,10 +109,12 @@ int main(int argc, char** argv) {
         cudaEventElapsedTime(&gpu_ms, ev_start, ev_stop);
         double wall_us = timespec_to_us(t1) - timespec_to_us(t0);
 
-        fprintf(f, "%.6f,%.6f\n", gpu_ms * 1000.0f, wall_us);
+        fprintf(fg, "%.6f\n", gpu_ms * 1000.0f);
+        fprintf(fw, "%.6f\n", wall_us);
     }
 
-    fclose(f);
+    fclose(fg);
+    fclose(fw);
     cudaEventDestroy(ev_start);
     cudaEventDestroy(ev_stop);
     cudaFree(d_buf);

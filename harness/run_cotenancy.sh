@@ -6,18 +6,18 @@
 #
 #   Without MPS (default): GPU context lock is held per-process.
 #     The attacker is blocked at cudaEventSynchronize while the victim
-#     runs. Wall-clock timing (wall_us column) captures the contention.
-#     GPU-event timing (gpu_us) is unaffected — it only starts once the
-#     attacker acquires the GPU.
+#     runs. Wall-clock timing (wall_*.csv) captures the contention.
+#     GPU-event timing (gpu_*.csv) is unaffected — it only starts once
+#     the attacker acquires the GPU.
 #
 #   With MPS: kernels from both processes truly overlap on the GPU.
 #     The victim's DRAM traffic slows the attacker's kernel directly.
-#     GPU-event timing becomes the meaningful column.
+#     GPU-event timing (gpu_*.csv) becomes the meaningful measurement.
 #     Enable:  nvidia-cuda-mps-control -d
 #     Disable: echo quit | nvidia-cuda-mps-control
 #
 # Usage:
-#   bash harness/run_cotenancy.sh [--mps]
+#   bash harness/run_cotenancy.sh
 
 set -euo pipefail
 
@@ -48,7 +48,8 @@ echo ""
 run_trial() {
     local class=$1
     local label=$2
-    local outfile="$OUTDIR/cotenancy_attacker_class${class}.csv"
+    local gpu_out="$OUTDIR/cotenancy_gpu_class${class}.csv"
+    local wall_out="$OUTDIR/cotenancy_wall_class${class}.csv"
 
     echo "--- Class $class ($label) ---"
 
@@ -67,8 +68,10 @@ run_trial() {
         exit 1
     fi
 
-    echo "  Starting attacker ($NTRACES traces) -> $outfile"
-    "$ATTACKER" "$NTRACES" "$outfile"
+    echo "  Starting attacker ($NTRACES traces)..."
+    echo "    gpu  -> $gpu_out"
+    echo "    wall -> $wall_out"
+    "$ATTACKER" "$NTRACES" "$gpu_out" "$wall_out"
 
     # Terminate victim cleanly.
     kill "$VICTIM_PID" 2>/dev/null || true
@@ -86,22 +89,18 @@ echo ""
 run_trial 1 "invalid ciphertexts"
 
 echo ""
-echo "=== Running TVLA analysis (gpu_us column) ==="
+echo "=== TVLA: GPU-event timing (meaningful under MPS) ==="
 python3 harness/tvla_analysis.py \
-    --col gpu_us \
-    "$OUTDIR/cotenancy_attacker_class0.csv" \
-    "$OUTDIR/cotenancy_attacker_class1.csv" || \
-python3 harness/tvla_analysis.py \
-    "$OUTDIR/cotenancy_attacker_class0.csv" \
-    "$OUTDIR/cotenancy_attacker_class1.csv"
+    "$OUTDIR/cotenancy_gpu_class0.csv" \
+    "$OUTDIR/cotenancy_gpu_class1.csv"
 
 echo ""
-echo "=== Running TVLA analysis (wall_us column) ==="
+echo "=== TVLA: Wall-clock timing (captures contention without MPS) ==="
 python3 harness/tvla_analysis.py \
-    --col wall_us \
-    "$OUTDIR/cotenancy_attacker_class0.csv" \
-    "$OUTDIR/cotenancy_attacker_class1.csv" 2>/dev/null || \
-echo "  (tvla_analysis.py does not support --col; analyse wall_us manually)"
+    "$OUTDIR/cotenancy_wall_class0.csv" \
+    "$OUTDIR/cotenancy_wall_class1.csv"
 
 echo ""
-echo "Done. Results in $OUTDIR/cotenancy_attacker_class{0,1}.csv"
+echo "Done."
+echo "  GPU  traces: $OUTDIR/cotenancy_gpu_class{0,1}.csv"
+echo "  Wall traces: $OUTDIR/cotenancy_wall_class{0,1}.csv"
