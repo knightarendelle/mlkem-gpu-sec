@@ -240,8 +240,23 @@ __device__ inline void polyvec_decompress<10>::operator()(
   std::int16_t t3 = decompress_unit(
       ((a3 >> 6) | (static_cast<std::uint16_t>(a4) << 2)) & 0x3ff);
 
-  coeffs[0] = make_short2(t0, t1);
-  coeffs[1] = make_short2(t2, t3);
+  // Hints 1+3 (BCoal / Constant-Time DRAM Access):
+  // Use PTX write-through stores (.wt) that bypass L2 and the hardware
+  // Delta Colour Compression (DCC) engine. DCC compresses L2→DRAM writebacks
+  // when adjacent coefficient values are small/structured (valid ciphertext)
+  // but cannot compress uniform-random values (invalid ciphertext), creating
+  // a measurable DRAM bandwidth difference. Bypassing DCC ensures identical
+  // raw DRAM write traffic for both ciphertext classes.
+  auto wt_store = [](short2* ptr, std::int16_t x, std::int16_t y) noexcept {
+    std::uint32_t v =
+        static_cast<std::uint16_t>(x) |
+        (static_cast<std::uint32_t>(static_cast<std::uint16_t>(y)) << 16);
+    asm volatile("st.global.wt.u32 [%0], %1;"
+                 : : "l"(reinterpret_cast<unsigned long long>(ptr)), "r"(v)
+                 : "memory");
+  };
+  wt_store(coeffs,     t0, t1);
+  wt_store(coeffs + 1, t2, t3);
 }
 
 template <>
@@ -284,10 +299,19 @@ __device__ inline void polyvec_decompress<11>::operator()(
   std::int16_t t7 = decompress_unit(
       ((a9 >> 5) | (static_cast<std::uint16_t>(a10) << 3)) & 0x7ff);
 
-  coeffs[0] = make_short2(t0, t1);
-  coeffs[1] = make_short2(t2, t3);
-  coeffs[2] = make_short2(t4, t5);
-  coeffs[3] = make_short2(t6, t7);
+  // Hints 1+3 (BCoal / Constant-Time DRAM Access): same reasoning as <10>.
+  auto wt_store = [](short2* ptr, std::int16_t x, std::int16_t y) noexcept {
+    std::uint32_t v =
+        static_cast<std::uint16_t>(x) |
+        (static_cast<std::uint32_t>(static_cast<std::uint16_t>(y)) << 16);
+    asm volatile("st.global.wt.u32 [%0], %1;"
+                 : : "l"(reinterpret_cast<unsigned long long>(ptr)), "r"(v)
+                 : "memory");
+  };
+  wt_store(coeffs,     t0, t1);
+  wt_store(coeffs + 1, t2, t3);
+  wt_store(coeffs + 2, t4, t5);
+  wt_store(coeffs + 3, t6, t7);
 }
 
 __device__ inline void polyvec_tobytes::operator()(std::uint8_t* bytes,

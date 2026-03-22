@@ -69,6 +69,21 @@ __global__ void polyvec_decompress(short2* polyvec, const std::uint8_t* cbytes,
   device::polyvec_decompress<du> decompress;
 
   if (unsigned pos = blockIdx.x * blockDim.y + threadIdx.y; pos < ninputs) {
+    // Hint 2 (Oblivious Memory Access): uniform-stride pre-scan of the entire
+    // ciphertext polyvec row before decoding.  All threads collectively read
+    // every byte in a fixed coalesced pattern (stride = blockDim.x), ensuring
+    // identical L2/DRAM read traffic for valid (bounded-coefficient) and
+    // invalid (uniform-random) ciphertexts.  The compiler cannot eliminate the
+    // loop because the accumulator is consumed by the asm sink.
+    {
+      constexpr unsigned total_cbytes = k * params::n * du / 8;
+      const std::uint8_t* row = cbytes + cbytes_pitch * pos;
+      unsigned prescan = 0;
+      for (unsigned b = threadIdx.x; b < total_cbytes; b += blockDim.x)
+        prescan ^= static_cast<unsigned>(row[b]);
+      asm volatile("" : : "r"(prescan) : "memory");
+    }
+
     polyvec += (k * params::n / 2) * pos + kp::coeff_per_thread * threadIdx.x;
     cbytes += cbytes_pitch * pos + kp::cbyte_per_thread * threadIdx.x;
 
