@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -280,9 +281,6 @@ void trace_bench() {
       sk_d.get_ptr(), sk_d.get_pitch(), data_ready, &sk_used,
       dec_mr);
 
-  cuda_resource::event dec_start_event(cudaEventDefault);
-  cuda_resource::event dec_end_event(cudaEventDefault);
-
   cuda_resource::graph_exec dec_exec(dec_graph);
   cuda_resource::stream dec_stream(cudaStreamNonBlocking);
 
@@ -314,15 +312,13 @@ void trace_bench() {
   std::printf("timing_us\n");
 
   for (unsigned i = 0; i < ntraces; i++) {
-    CCC(cudaEventRecord(dec_start_event, dec_stream));
     CCC(cudaGraphLaunch(dec_exec, dec_stream));
+    auto t_start = std::chrono::high_resolution_clock::now();
     CCC(cudaStreamSynchronize(dec_stream));
-    CCC(cudaEventRecord(dec_end_event, dec_stream));
-    CCC(cudaStreamSynchronize(dec_stream));
+    auto t_end = std::chrono::high_resolution_clock::now();
 
-    float ms = 0.0f;
-    CCC(cudaEventElapsedTime(&ms, dec_start_event, dec_end_event));
-    std::printf("%.6f\n", ms * 1000.0f);
+    double us = std::chrono::duration<double, std::micro>(t_end - t_start).count();
+    std::printf("%.6f\n", us);
 
     if (ntraces >= 10 && (i + 1) % (ntraces / 10) == 0) {
       fprintf(stderr, "  %u%%\n", (i + 1) * 100 / ntraces);
