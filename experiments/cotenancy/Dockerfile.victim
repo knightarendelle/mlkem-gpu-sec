@@ -1,0 +1,35 @@
+# Dockerfile.victim
+# Multi-stage build for the co-tenancy victim (ML-KEM decapsulation loop).
+#
+# Build context must be the repo root so the atpqc-cuda library sources
+# and the victim_loop.cu source are both available:
+#
+#   docker build \
+#     -f experiments/cotenancy/Dockerfile.victim \
+#     -t mlkem-cotenancy-victim \
+#     .
+
+# ── Stage 1: compile ────────────────────────────────────────────────────────
+FROM nvidia/cuda:12.3.0-devel-ubuntu22.04 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ make && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the atpqc-cuda library and the victim source
+COPY baseline/atpqc-cuda                          /workspace/baseline/atpqc-cuda
+COPY experiments/cotenancy/victim_loop.cu         /workspace/experiments/cotenancy/victim_loop.cu
+
+WORKDIR /workspace/baseline/atpqc-cuda
+RUN make victim_loop
+
+# ── Stage 2: minimal runtime image ──────────────────────────────────────────
+FROM nvidia/cuda:12.3.0-runtime-ubuntu22.04
+
+RUN mkdir -p /logs
+
+COPY --from=builder \
+    /workspace/baseline/atpqc-cuda/target/victim_loop.out \
+    /usr/local/bin/victim_loop
+
+CMD ["/usr/local/bin/victim_loop"]

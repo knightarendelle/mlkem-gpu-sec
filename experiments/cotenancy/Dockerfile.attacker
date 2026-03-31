@@ -1,0 +1,31 @@
+# Dockerfile.attacker
+# Standalone attacker: DRAM bandwidth probe, no victim dependency.
+#
+# Build context must include experiments/cotenancy/:
+#
+#   docker build \
+#     -f experiments/cotenancy/Dockerfile.attacker \
+#     -t mlkem-cotenancy-attacker \
+#     .
+
+# ── Stage 1: compile ────────────────────────────────────────────────────────
+FROM nvidia/cuda:12.3.0-devel-ubuntu22.04 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY experiments/cotenancy/attacker_probe.cu /workspace/attacker_probe.cu
+
+RUN nvcc -O3 -arch=compute_89 \
+    /workspace/attacker_probe.cu \
+    -o /workspace/attacker_probe
+
+# ── Stage 2: minimal runtime image ──────────────────────────────────────────
+FROM nvidia/cuda:12.3.0-runtime-ubuntu22.04
+
+RUN mkdir -p /logs
+
+COPY --from=builder /workspace/attacker_probe /usr/local/bin/attacker_probe
+
+CMD ["/usr/local/bin/attacker_probe"]
