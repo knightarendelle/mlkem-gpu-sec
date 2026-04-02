@@ -28,12 +28,13 @@ KYBER_SOURCE = $(wildcard $(KYBER_DIR)/*.cu) $(wildcard $(KYBER_DIR)/*/*.cu)
 
 SOURCE = $(FIPS202_WS_SOURCE) $(TIMING_FENCE_WS_SOURCE) $(VERIFY_CMOV_WS_SOURCE) $(KYBER_SOURCE)
 
-.PHONY: all clean test bench trace victim_loop
+.PHONY: all clean test bench trace victim_loop net_server
 
 test: test_kyber512 test_kyber768 test_kyber1024
 bench: bench_kyber512 bench_kyber768 bench_kyber1024
 trace: trace_kyber512 trace_kyber768 trace_kyber1024
 victim_loop: victim_loop_kyber512 victim_loop_kyber768 victim_loop_kyber1024
+net_server: $(BLDDIR)/net_server_kyber512.out
 
 victim_loop_kyber512: $(BLDDIR)/victim_loop_kyber512.out
 victim_loop_kyber768: $(BLDDIR)/victim_loop_kyber768.out
@@ -73,6 +74,10 @@ $(BLDDIR)/trace_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.c
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
 
 VICTIM_SRC := ../../experiments/cotenancy/victim_loop.cu
+NET_SERVER_SRC := ../../experiments/network_timing/server.cu
+
+$(BLDDIR)/net_server_kyber512.out: $(SOURCE) $(NET_SERVER_SRC)
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 -I$(SRCDIR) $^ -o $@
 
 $(BLDDIR)/victim_loop_kyber512.out: $(SOURCE) $(VICTIM_SRC)
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 -I$(SRCDIR) $^ -o $@
