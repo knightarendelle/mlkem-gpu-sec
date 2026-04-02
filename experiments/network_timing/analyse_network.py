@@ -87,6 +87,36 @@ def sliding_window_tvla(c0: np.ndarray, c1: np.ndarray,
     return np.array(t_vals)
 
 
+def paired_batch_tvla(c0: np.ndarray, c1: np.ndarray, batch_size: int = 500):
+    """
+    Adjacent-batch paired comparison.
+
+    The client collects in interleaved batches: [500×c0, 500×c1, 500×c0, ...].
+    Each c0 batch and its partner c1 batch are ~75ms apart, so they share
+    the same slow RTT drift baseline.  Subtracting batch means cancels that
+    drift, leaving only high-frequency noise in each delta.
+
+        δᵢ = mean(c1[i*B:(i+1)*B]) − mean(c0[i*B:(i+1)*B])
+
+    A one-sample t-test then asks: is mean(δ) ≠ 0?
+    This is equivalent to a paired t-test and is robust to non-stationary
+    (heteroscedastic) RTT noise that breaks the global Welch's test.
+
+    Returns (t_stat, p_value, deltas_array, n_pairs).
+    """
+    n_pairs = min(len(c0), len(c1)) // batch_size
+    if n_pairs < 2:
+        return float('nan'), float('nan'), np.array([]), 0
+
+    deltas = np.empty(n_pairs)
+    for i in range(n_pairs):
+        s, e = i * batch_size, (i + 1) * batch_size
+        deltas[i] = np.mean(c1[s:e]) - np.mean(c0[s:e])
+
+    t_stat, p_value = stats.ttest_1samp(deltas, popmean=0)
+    return float(t_stat), float(p_value), deltas, n_pairs
+
+
 def print_stats(label: str, data: np.ndarray) -> None:
     print(f"  {label}:")
     print(f"    N:      {len(data):,}")
@@ -179,6 +209,44 @@ def main() -> int:
     print(f"  Max |t| in windows: {max_sw:.4f}")
     print(f"  Windows above threshold: {frac_sw * 100:.1f}%")
 
+    # ── Paired-batch analysis ─────────────────────────────
+    # Try three batch sizes to find the autocorrelation sweet spot.
+    print("\n[Paired-Batch TVLA — adjacent batch mean differences]")
+    print("  Cancels slow RTT drift by comparing interleaved c0/c1 batches.")
+    paired_results = {}
+    for bs in (100, 500, 1000):
+        pt, pp, deltas, n_pairs = paired_batch_tvla(rtt0, rtt1, batch_size=bs)
+        if n_pairs < 2:
+            continue
+        pt_abs = abs(pt)
+        pverdict = ("*** LEAKAGE DETECTED ***" if pt_abs >= TVLA_THRESHOLD
+                    else "No leakage detected")
+        print(f"\n  batch_size={bs}  ({n_pairs:,} pairs)")
+        print(f"    mean(δ):       {float(np.mean(deltas)):.4f} us")
+        print(f"    std(δ):        {float(np.std(deltas)):.4f} us")
+        print(f"    t-statistic:   {pt:.6f}")
+        print(f"    |t-statistic|: {pt_abs:.6f}")
+        print(f"    p-value:       {pp:.2e}")
+        print(f"    VERDICT: {pverdict}")
+        paired_results[bs] = (pt, pp, pt_abs, n_pairs, float(np.mean(deltas)),
+                              float(np.std(deltas)))
+
+    # Best paired result = batch size with highest |t|
+    best_bs = max(paired_results, key=lambda b: paired_results[b][2])
+    best_pt, best_pp, best_pt_abs, best_n, best_mean_d, best_std_d = paired_results[best_bs]
+    best_pverdict = ("*** LEAKAGE DETECTED ***" if best_pt_abs >= TVLA_THRESHOLD
+                     else "No leakage detected")
+
+    print()
+    print("=" * 56)
+    print(f"  PAIRED VERDICT (batch={best_bs}): {best_pverdict}")
+    print(f"  |t| = {best_pt_abs:.4f}  threshold = {TVLA_THRESHOLD}")
+    print("=" * 56)
+
+    # Overall verdict: leakage if EITHER global OR best-paired exceeds threshold
+    overall_leakage = t_abs >= TVLA_THRESHOLD or best_pt_abs >= TVLA_THRESHOLD
+    overall_verdict = "*** LEAKAGE DETECTED ***" if overall_leakage else "No leakage detected"
+
     # ── Build report ──────────────────────────────────────
     report_lines = [
         "mlkem-gpu-sec Network Timing Attack TVLA Report",
@@ -193,7 +261,7 @@ def main() -> int:
         f"  Class 1 mean:  {np.mean(rtt1):.4f} us  std: {np.std(rtt1):.4f} us",
         f"  Mean diff:     {mean_diff:.4f} us  (class1 − class0)",
         f"",
-        f"[Welch's t-test]",
+        f"[Global Welch's t-test]",
         f"  t-statistic:   {t_stat:.6f}",
         f"  |t-statistic|: {t_abs:.6f}",
         f"  p-value:       {p_value:.2e}",
@@ -203,6 +271,19 @@ def main() -> int:
         f"[Sliding Window]",
         f"  Max |t|:               {max_sw:.4f}",
         f"  Windows above threshold: {frac_sw * 100:.1f}%",
+        f"",
+        f"[Paired-Batch TVLA (best: batch_size={best_bs}, {best_n:,} pairs)]",
+        f"  mean(δ):       {best_mean_d:.4f} us",
+        f"  std(δ):        {best_std_d:.4f} us",
+        f"  t-statistic:   {best_pt:.6f}",
+        f"  |t-statistic|: {best_pt_abs:.6f}",
+        f"  p-value:       {best_pp:.2e}",
+        f"  Threshold:     {TVLA_THRESHOLD}",
+        f"  Verdict:       {best_pverdict}",
+        f"",
+        f"[Overall Verdict]",
+        f"  {overall_verdict}",
+        f"  Global |t|={t_abs:.4f}  Paired |t|={best_pt_abs:.4f}  threshold={TVLA_THRESHOLD}",
     ]
 
     # ── Save report ───────────────────────────────────────
@@ -217,7 +298,7 @@ def main() -> int:
         f.write("\n".join(report_lines) + "\n")
     print(f"\n  Report saved: {out_path}")
 
-    return 0 if t_abs < TVLA_THRESHOLD else 1
+    return 0 if not overall_leakage else 1
 
 
 if __name__ == "__main__":
