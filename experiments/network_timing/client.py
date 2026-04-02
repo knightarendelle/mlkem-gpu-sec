@@ -29,7 +29,7 @@ import time
 
 # ── Constants ─────────────────────────────────────────────
 CT_SIZE            = 768          # Kyber-512 ciphertext bytes
-N_PER_CLASS        = 2_000_000    # measurements per class
+N_PER_CLASS        = 12_000_000   # measurements per class
 BATCH_SIZE         = 500          # how many of each class before switching
 VALID_CT_PATH      = "/tmp/mlkem_valid_ct.bin"
 DEFAULT_HOST       = "127.0.0.1"
