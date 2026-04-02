@@ -1,0 +1,44 @@
+mlkem-gpu-sec Co-tenancy TVLA Report
+============================================================
+Victim log:      /workspace/mlkem-gpu-sec/experiments/cotenancy/logs/victim_log.csv
+Attacker log:    /workspace/mlkem-gpu-sec/experiments/cotenancy/logs/attacker_log.csv
+Victim offset:   2000000 us
+Total probes:    7,444
+In-window probes:5,458
+Matched class 0: 2,752
+Matched class 1: 2,706
+TVLA threshold:  4.5
+
+[Wall-clock timing (wall_us)]
+  Removed 6 outliers from class 0, 3 from class 1
+  Class 0: N=2,746  mean=5092.2775 us  std=303.5384 us
+  Class 1: N=2,703  mean=5087.0798 us  std=288.8529 us
+  Mean difference: -5.1977 us
+  t-statistic: 0.647468
+  |t-statistic|: 0.647468
+  p-value: 5.17e-01
+  Threshold: 4.5
+
+====================================================
+  VERDICT: No leakage detected
+  |t| = 0.6475 < 4.5
+====================================================
+  Sliding window max |t|: 4.2291
+  Windows above threshold: 0.0%
+
+[GPU-event timing  (gpu_us)]
+  Removed 6 outliers from class 0, 1 from class 1
+  Class 0: N=2,746  mean=4905.9158 us  std=287.7777 us
+  Class 1: N=2,705  mean=4899.5479 us  std=277.6109 us
+  Mean difference: -6.3679 us
+  t-statistic: 0.831350
+  |t-statistic|: 0.831350
+  p-value: 4.06e-01
+  Threshold: 4.5
+
+====================================================
+  VERDICT: No leakage detected
+  |t| = 0.8313 < 4.5
+====================================================
+  Sliding window max |t|: 4.0876
+  Windows above threshold: 0.0%
