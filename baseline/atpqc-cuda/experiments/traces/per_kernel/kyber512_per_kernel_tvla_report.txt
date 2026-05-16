@@ -1,0 +1,36 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: baseline/atpqc-cuda/experiments/traces/per_kernel/kyber512_class0_n100000_per_kernel.csv
+Class 1 CSV: baseline/atpqc-cuda/experiments/traces/per_kernel/kyber512_class1_n100000_per_kernel.csv
+Kernels analysed: 27
+Kernels leaking (|t|>=4.5): 27
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     verify_cmov                  27.15    24.967    26.862    +1.895  4.75e-162 *** LEAK
+2     decode_t                     26.14    25.101    26.926    +1.825  2.07e-150 *** LEAK
+3     hash_coin                    25.27    25.144    26.738    +1.593  1.21e-140 *** LEAK
+4     fwdntt_u                     24.08    24.921    26.589    +1.669  6.42e-128 *** LEAK
+5     decode_s                     24.07    24.931    26.589    +1.658  8.07e-128 *** LEAK
+6     decompress_u                 23.96    24.925    26.554    +1.629  9.92e-127 *** LEAK
+7     v_minus_su                   23.33    24.906    26.509    +1.603  3.10e-120 *** LEAK
+8     generate_e2                  23.27    25.219    26.717    +1.499  1.39e-119 *** LEAK
+9     kdf                          23.26    25.263    26.779    +1.515  1.81e-119 *** LEAK
+10    ar_plus_e1                   23.13    24.985    26.573    +1.589  3.48e-118 *** LEAK
+11    t_times_r                    22.98    24.874    26.449    +1.575  9.37e-117 *** LEAK
+12    compress_u                   22.81    24.906    26.492    +1.586  5.41e-115 *** LEAK
+13    poly_frommsg                 22.75    24.960    26.521    +1.561  1.99e-114 *** LEAK
+14    a_times_r                    22.63    24.922    26.474    +1.552  3.09e-113 *** LEAK
+15    intt_ar                      22.31    24.886    26.399    +1.512  3.80e-110 *** LEAK
+16    intt_tr                      22.21    24.870    26.361    +1.491  3.43e-109 *** LEAK
+17    intt_su                      22.05    24.936    26.433    +1.497  1.22e-107 *** LEAK
+18    tr_plus_e2_plus_m            22.02    24.927    26.437    +1.510  2.59e-107 *** LEAK
+19    decompress_v                 21.80    24.926    26.429    +1.503  2.94e-105 *** LEAK
+20    poly_tomsg                   21.63    24.942    26.429    +1.487  1.37e-103 *** LEAK
+21    compress_v                   21.42    24.964    26.448    +1.484  1.17e-101 *** LEAK
+22    s_times_u                    20.85    24.962    26.387    +1.425   1.81e-96 *** LEAK
+23    fwdntt_r                     20.53    25.121    26.539    +1.418   1.46e-93 *** LEAK
+24    generate_r                   19.90    25.745    26.973    +1.227   5.31e-88 *** LEAK
+25    generate_e1                  17.07    24.788    25.942    +1.153   2.94e-65 *** LEAK
+26    generate_at                   8.53    33.024    33.734    +0.710   1.50e-17 *** LEAK
+27    hash_ct                       6.61    40.053    40.557    +0.504   3.75e-11 *** LEAK

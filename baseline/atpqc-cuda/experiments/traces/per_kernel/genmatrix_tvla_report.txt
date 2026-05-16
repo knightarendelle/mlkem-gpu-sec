@@ -1,0 +1,10 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: experiments/traces/per_kernel/genmatrix_class0_n100000.csv
+Class 1 CSV: experiments/traces/per_kernel/genmatrix_class1_n100000.csv
+Kernels analysed: 1
+Kernels leaking (|t|>=4.5): 0
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     generate_at                   1.63    24.324    24.413    +0.090   1.04e-01

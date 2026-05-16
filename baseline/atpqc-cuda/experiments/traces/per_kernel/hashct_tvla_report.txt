@@ -1,0 +1,10 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: experiments/traces/per_kernel/hashct_class0_n100000.csv
+Class 1 CSV: experiments/traces/per_kernel/hashct_class1_n100000.csv
+Kernels analysed: 1
+Kernels leaking (|t|>=4.5): 0
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     hash_ct                       3.92    42.969    42.740    -0.229   8.83e-05

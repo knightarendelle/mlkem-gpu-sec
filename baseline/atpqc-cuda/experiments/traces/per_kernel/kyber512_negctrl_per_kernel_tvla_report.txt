@@ -1,0 +1,36 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: experiments/traces/per_kernel/kyber512_negctrl_class0_n100000_per_kernel.csv
+Class 1 CSV: experiments/traces/per_kernel/kyber512_negctrl_class1_n100000_per_kernel.csv
+Kernels analysed: 27
+Kernels leaking (|t|>=4.5): 16
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     decompress_u                 14.49    10.551     9.851    -0.700   1.50e-47 *** LEAK
+2     decode_t                     13.25    10.176     9.530    -0.646   4.76e-40 *** LEAK
+3     generate_e2                  10.62    17.206    16.759    -0.446   2.35e-26 *** LEAK
+4     hash_ct                      10.09    47.190    47.546    +0.356   6.00e-24 *** LEAK
+5     intt_ar                       8.79    10.893    10.534    -0.359   1.53e-18 *** LEAK
+6     tr_plus_e2_plus_m             8.48     9.216     8.855    -0.361   2.26e-17 *** LEAK
+7     intt_tr                       8.18    10.679    10.348    -0.331   2.90e-16 *** LEAK
+8     fwdntt_u                      6.88    10.400    10.122    -0.278   5.84e-12 *** LEAK
+9     t_times_r                     6.71     9.239     8.955    -0.284   1.96e-11 *** LEAK
+10    compress_u                    5.90     9.121     8.886    -0.236   3.68e-09 *** LEAK
+11    a_times_r                     5.76     9.318     9.077    -0.242   8.62e-09 *** LEAK
+12    compress_v                    5.63     9.028     8.793    -0.236   1.76e-08 *** LEAK
+13    fwdntt_r                      5.36    11.046    10.810    -0.236   8.22e-08 *** LEAK
+14    ar_plus_e1                    5.04     9.093     8.884    -0.209   4.72e-07 *** LEAK
+15    s_times_u                     4.67     9.204     8.999    -0.205   3.07e-06 *** LEAK
+16    v_minus_su                    4.63     9.063     8.875    -0.188   3.61e-06 *** LEAK
+17    kdf                           3.66    16.013    15.877    -0.136   2.56e-04
+18    poly_tomsg                    3.61     9.153     9.001    -0.152   3.10e-04
+19    generate_at                   3.16    30.543    30.409    -0.134   1.58e-03
+20    decode_s                      2.87     9.072     8.953    -0.119   4.09e-03
+21    generate_e1                   2.49    16.162    16.071    -0.091   1.29e-02
+22    verify_cmov                   2.37    10.478    10.393    -0.085   1.76e-02
+23    intt_su                       2.28    11.176    11.077    -0.099   2.29e-02
+24    poly_frommsg                  2.02     9.095     9.010    -0.084   4.33e-02
+25    hash_coin                     1.23    16.437    16.486    +0.049   2.18e-01
+26    generate_r                    0.48    22.004    22.021    +0.017   6.29e-01
+27    decompress_v                  0.47     9.847     9.871    +0.024   6.37e-01
