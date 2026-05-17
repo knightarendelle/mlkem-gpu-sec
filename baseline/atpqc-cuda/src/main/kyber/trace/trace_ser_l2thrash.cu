@@ -116,6 +116,7 @@ constexpr variant variant_v;
       float _ms = 0.f;                                                          \
       CCC(cudaEventElapsedTime(&_ms, (ev_a), (ev_b)));                          \
       std::printf("%u,%s,%.3f\n", (tid), (label), _ms * 1000.f);               \
+      total_us += _ms * 1000.f;                                                 \
     }                                                                           \
     /* Evict entire L2 before next kernel */                                    \
     CCC(cudaMemsetAsync(thrash_buf, 0xA5, l2_bytes, (stream)));                 \
@@ -347,6 +348,7 @@ void trace_serialized_l2thrash() {
   CCC(cudaEventCreate(&ev_stop));
 
   auto run_one = [&](unsigned trace_i, bool record) {
+    float total_us = 0.f;
 
     LAUNCH_TIMED_THRASH("decompress_u", decompressu, stream, ev_start, ev_stop,
                         record, trace_i,
@@ -481,6 +483,9 @@ void trace_serialized_l2thrash() {
                         record, trace_i,
                         ss_d.get_ptr(), ss_d.get_pitch(),
                         kr_ptr, kr_pitch, 2 * params::symbytes);
+
+    if (record)
+      std::printf("%u,total_decaps,%.3f\n", trace_i, total_us);
   };
 
   // ── Warmup ────────────────────────────────────────────────────────────

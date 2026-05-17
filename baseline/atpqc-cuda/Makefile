@@ -28,14 +28,17 @@ KYBER_SOURCE = $(wildcard $(KYBER_DIR)/*.cu) $(wildcard $(KYBER_DIR)/*/*.cu)
 
 SOURCE = $(FIPS202_WS_SOURCE) $(TIMING_FENCE_WS_SOURCE) $(VERIFY_CMOV_WS_SOURCE) $(KYBER_SOURCE)
 
-.PHONY: all clean test bench trace trace_ser trace_ser_l2flush trace_ser_l2thrash trace_negctrl trace_keydist trace_genmatrix trace_hashct ncu_hashct ncu_genmatrix victim_loop net_server
+.PHONY: all clean test bench bench_l2thrash trace trace_ser trace_ser_interleaved trace_ser_l2flush trace_ser_l2thrash trace_ser_l2thrash_interleaved trace_negctrl trace_keydist trace_genmatrix trace_hashct ncu_hashct ncu_genmatrix victim_loop net_server
 
 test: test_kyber512 test_kyber768 test_kyber1024
 bench: bench_kyber512 bench_kyber768 bench_kyber1024
+bench_l2thrash: bench_l2thrash_kyber512 bench_l2thrash_kyber768 bench_l2thrash_kyber1024
 trace: trace_kyber512 trace_kyber768 trace_kyber1024
 trace_ser: trace_ser_kyber512 trace_ser_kyber768 trace_ser_kyber1024
 trace_ser_l2flush: trace_ser_l2flush_kyber512 trace_ser_l2flush_kyber768 trace_ser_l2flush_kyber1024
 trace_ser_l2thrash: trace_ser_l2thrash_kyber512 trace_ser_l2thrash_kyber768 trace_ser_l2thrash_kyber1024
+trace_ser_interleaved: trace_ser_interleaved_kyber512 trace_ser_interleaved_kyber768 trace_ser_interleaved_kyber1024
+trace_ser_l2thrash_interleaved: trace_ser_l2thrash_interleaved_kyber512 trace_ser_l2thrash_interleaved_kyber768 trace_ser_l2thrash_interleaved_kyber1024
 victim_loop: victim_loop_kyber512 victim_loop_kyber768 victim_loop_kyber1024
 net_server: $(BLDDIR)/net_server_kyber512.out
 
@@ -69,6 +72,17 @@ $(BLDDIR)/bench_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/main.cu
 $(BLDDIR)/bench_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/main.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
 
+bench_l2thrash_kyber512: $(BLDDIR)/bench_l2thrash_kyber512.out
+bench_l2thrash_kyber768: $(BLDDIR)/bench_l2thrash_kyber768.out
+bench_l2thrash_kyber1024: $(BLDDIR)/bench_l2thrash_kyber1024.out
+
+$(BLDDIR)/bench_l2thrash_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/bench_l2thrash.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 $^ -o $@
+$(BLDDIR)/bench_l2thrash_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/bench_l2thrash.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber768 $^ -o $@
+$(BLDDIR)/bench_l2thrash_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/bench/bench_l2thrash.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
+
 $(BLDDIR)/trace_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 $^ -o $@
 $(BLDDIR)/trace_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.cu
@@ -79,6 +93,10 @@ $(BLDDIR)/trace_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_main.c
 trace_ser_kyber512: $(BLDDIR)/trace_ser_kyber512.out
 trace_ser_kyber768: $(BLDDIR)/trace_ser_kyber768.out
 trace_ser_kyber1024: $(BLDDIR)/trace_ser_kyber1024.out
+
+trace_ser_interleaved_kyber512: $(BLDDIR)/trace_ser_interleaved_kyber512.out
+trace_ser_interleaved_kyber768: $(BLDDIR)/trace_ser_interleaved_kyber768.out
+trace_ser_interleaved_kyber1024: $(BLDDIR)/trace_ser_interleaved_kyber1024.out
 
 trace_ser_l2flush_kyber512: $(BLDDIR)/trace_ser_l2flush_kyber512.out
 trace_ser_l2flush_kyber768: $(BLDDIR)/trace_ser_l2flush_kyber768.out
@@ -95,6 +113,13 @@ $(BLDDIR)/trace_ser_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser
 $(BLDDIR)/trace_ser_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_serialized.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
 
+$(BLDDIR)/trace_ser_interleaved_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_interleaved.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 $^ -o $@
+$(BLDDIR)/trace_ser_interleaved_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_interleaved.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber768 $^ -o $@
+$(BLDDIR)/trace_ser_interleaved_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_interleaved.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
+
 $(BLDDIR)/trace_ser_l2flush_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2flush.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 $^ -o $@
 $(BLDDIR)/trace_ser_l2flush_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2flush.cu
@@ -107,6 +132,17 @@ $(BLDDIR)/trace_ser_l2thrash_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/
 $(BLDDIR)/trace_ser_l2thrash_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2thrash.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber768 $^ -o $@
 $(BLDDIR)/trace_ser_l2thrash_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2thrash.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
+
+trace_ser_l2thrash_interleaved_kyber512: $(BLDDIR)/trace_ser_l2thrash_interleaved_kyber512.out
+trace_ser_l2thrash_interleaved_kyber768: $(BLDDIR)/trace_ser_l2thrash_interleaved_kyber768.out
+trace_ser_l2thrash_interleaved_kyber1024: $(BLDDIR)/trace_ser_l2thrash_interleaved_kyber1024.out
+
+$(BLDDIR)/trace_ser_l2thrash_interleaved_kyber512.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2thrash_interleaved.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber512 $^ -o $@
+$(BLDDIR)/trace_ser_l2thrash_interleaved_kyber768.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2thrash_interleaved.cu
+	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber768 $^ -o $@
+$(BLDDIR)/trace_ser_l2thrash_interleaved_kyber1024.out: $(SOURCE) $(SRCDIR)/main/kyber/trace/trace_ser_l2thrash_interleaved.cu
 	$(NVCC) $(NVCCFLAGS) -DKYBER_VARIANT=kyber1024 $^ -o $@
 
 trace_negctrl: trace_negctrl_kyber512

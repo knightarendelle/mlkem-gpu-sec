@@ -1,0 +1,37 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: experiments/traces/l2thrash/kyber512_l2thrash_class0_n100000.csv
+Class 1 CSV: experiments/traces/l2thrash/kyber512_l2thrash_class1_n100000.csv
+Kernels analysed: 28
+Kernels leaking (|t|>=4.5): 28
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     total_decaps                 96.16   350.477   433.836   +83.359   0.00e+00 *** LEAK
+2     hash_ct                      68.26    29.230    33.283    +4.052   0.00e+00 *** LEAK
+3     hash_coin                    43.60    14.867    17.997    +3.130   0.00e+00 *** LEAK
+4     generate_at                  43.09    20.940    23.867    +2.927   0.00e+00 *** LEAK
+5     generate_r                   38.20    16.798    19.340    +2.542   0.00e+00 *** LEAK
+6     intt_ar                      37.62    11.599    14.281    +2.682  1.38e-308 *** LEAK
+7     intt_su                      37.55    11.538    14.222    +2.684  1.66e-307 *** LEAK
+8     fwdntt_u                     37.48    11.251    13.900    +2.649  2.78e-306 *** LEAK
+9     generate_e2                  36.86    14.192    16.733    +2.541  2.52e-296 *** LEAK
+10    generate_e1                  36.43    14.260    16.791    +2.531  1.26e-289 *** LEAK
+11    kdf                          35.54    14.404    16.869    +2.465  1.03e-275 *** LEAK
+12    s_times_u                    34.25     9.893    12.362    +2.470  2.34e-256 *** LEAK
+13    fwdntt_r                     33.99    11.412    13.845    +2.432  1.77e-252 *** LEAK
+14    poly_tomsg                   33.45     9.930    12.372    +2.442  1.53e-244 *** LEAK
+15    v_minus_su                   33.42     9.818    12.235    +2.417  3.23e-244 *** LEAK
+16    t_times_r                    33.36     9.884    12.285    +2.401  2.32e-243 *** LEAK
+17    decode_s                     33.36     9.852    12.272    +2.420  3.00e-243 *** LEAK
+18    poly_frommsg                 33.20     9.804    12.202    +2.398  5.09e-241 *** LEAK
+19    intt_tr                      32.66    11.380    13.706    +2.325  2.88e-233 *** LEAK
+20    ar_plus_e1                   32.64     9.800    12.144    +2.344  4.70e-233 *** LEAK
+21    decode_t                     32.40     9.774    12.105    +2.331  1.20e-229 *** LEAK
+22    compress_u                   32.32     9.849    12.164    +2.314  1.82e-228 *** LEAK
+23    a_times_r                    32.15     9.970    12.269    +2.299  3.90e-226 *** LEAK
+24    tr_plus_e2_plus_m            32.06     9.852    12.163    +2.311  7.63e-225 *** LEAK
+25    decompress_v                 31.14     9.837    12.066    +2.229  2.29e-212 *** LEAK
+26    compress_v                   30.71     9.954    12.169    +2.215  1.22e-206 *** LEAK
+27    verify_cmov                  30.63    11.875    14.100    +2.226  1.71e-205 *** LEAK
+28    decompress_u                 27.37    10.463    12.519    +2.056  1.20e-164 *** LEAK
