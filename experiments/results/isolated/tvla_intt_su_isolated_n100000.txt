@@ -1,0 +1,10 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: experiments/traces/isolated/intt_su_class0_n100000.csv
+Class 1 CSV: experiments/traces/isolated/intt_su_class1_n100000.csv
+Kernels analysed: 1
+Kernels leaking (|t|>=4.5): 0
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     intt_su                       1.42    11.818    11.733    -0.085   1.55e-01
