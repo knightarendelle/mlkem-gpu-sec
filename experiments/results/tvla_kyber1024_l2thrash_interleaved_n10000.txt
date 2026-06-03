@@ -1,0 +1,37 @@
+mlkem-gpu-sec Per-Kernel TVLA Report
+============================================================
+Class 0 CSV: experiments/traces/l2thrash/kyber1024_interleaved_class0_n10000.csv
+Class 1 CSV: experiments/traces/l2thrash/kyber1024_interleaved_class1_n10000.csv
+Kernels analysed: 28
+Kernels leaking (|t|>=4.5): 12
+
+Rank  Kernel                         |t|     Mean0     Mean1      Diff          p
+--------------------------------------------------------------------------------
+1     hash_ct                      99.33    38.096    37.502    -0.594   0.00e+00 *** LEAK
+2     hash_coin                    39.33     7.449     7.254    -0.196   0.00e+00 *** LEAK
+3     decompress_u                 36.71     4.131     3.709    -0.422  1.15e-281 *** LEAK
+4     total_decaps                 31.68   164.190   162.332    -1.858  6.26e-215 *** LEAK
+5     intt_su                      30.87     4.630     4.438    -0.192  1.95e-204 *** LEAK
+6     intt_ar                      29.15     4.585     4.408    -0.177  6.28e-183 *** LEAK
+7     fwdntt_r                      5.68     4.215     4.190    -0.025   1.37e-08 *** LEAK
+8     v_minus_su                    5.63     3.313     3.279    -0.034   1.84e-08 *** LEAK
+9     fwdntt_u                      4.79     4.217     4.196    -0.021   1.69e-06 *** LEAK
+10    poly_tomsg                    4.71     3.311     3.283    -0.028   2.49e-06 *** LEAK
+11    poly_frommsg                  4.60     3.297     3.270    -0.028   4.20e-06 *** LEAK
+12    decode_s                      4.58     3.310     3.283    -0.027   4.74e-06 *** LEAK
+13    s_times_u                     4.30     3.329     3.303    -0.027   1.75e-05
+14    decode_t                      2.85     3.288     3.271    -0.017   4.32e-03
+15    ar_plus_e1                    2.81     3.306     3.288    -0.018   4.97e-03
+16    decompress_v                  2.78     3.300     3.283    -0.016   5.46e-03
+17    intt_tr                       2.21     4.391     4.378    -0.012   2.73e-02
+18    t_times_r                     2.12     3.320     3.307    -0.013   3.43e-02
+19    generate_r                    1.57     7.475     7.465    -0.009   1.17e-01
+20    a_times_r                     1.55     3.347     3.338    -0.009   1.21e-01
+21    generate_at                   1.34    13.092    13.085    -0.007   1.80e-01
+22    verify_cmov                   1.21     6.654     6.662    +0.008   2.25e-01
+23    tr_plus_e2_plus_m             0.80     3.293     3.298    +0.005   4.23e-01
+24    kdf                           0.68     7.329     7.333    +0.004   4.97e-01
+25    generate_e1                   0.45     7.476     7.474    -0.003   6.52e-01
+26    compress_u                    0.37     3.299     3.302    +0.002   7.12e-01
+27    generate_e2                   0.34     7.249     7.247    -0.001   7.33e-01
+28    compress_v                    0.05     3.298     3.299    +0.000   9.59e-01
